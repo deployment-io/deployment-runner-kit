@@ -8,6 +8,7 @@ type Type uint
 
 const (
 	CheckoutRepo Type = iota + 1
+	BuildStaticSite
 )
 
 var typeToString = map[Type]string{
