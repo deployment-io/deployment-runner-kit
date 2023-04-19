@@ -1,3 +1,3 @@
-module github.com/deployment-io/jobs-runner-kit
+module github.com/deployment-io/deployment-runner-kit
 
 go 1.20

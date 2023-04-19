@@ -2,8 +2,8 @@ package jobs
 
 import (
 	"fmt"
-	"github.com/deployment-io/jobs-runner-kit/enums/commands_enums"
-	"github.com/deployment-io/jobs-runner-kit/enums/parameters_enums"
+	"github.com/deployment-io/deployment-runner-kit/enums/commands_enums"
+	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
 )
 
 // ArgsV1 represents args for jobs methods
