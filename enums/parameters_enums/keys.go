@@ -24,6 +24,7 @@ const (
 	PublishDirectory     Key = 14
 	NodeVersion          Key = 15
 	EnvironmentVariables Key = 16
+	EnvironmentFiles     Key = 17
 )
 
 var keyToString = map[Key]string{
@@ -43,6 +44,7 @@ var keyToString = map[Key]string{
 	PublishDirectory:     "publish directory",
 	NodeVersion:          "node version",
 	EnvironmentVariables: "environment variables",
+	EnvironmentFiles:     "environment files",
 }
 
 func (k Key) String() string {

@@ -14,7 +14,7 @@ type ContextV1 struct {
 }
 
 type ParameterType interface {
-	int | string | uint
+	int | string | uint | map[string]string
 }
 
 func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key) (T, error) {
