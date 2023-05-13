@@ -25,6 +25,7 @@ const (
 	NodeVersion          Key = 15
 	EnvironmentVariables Key = 16
 	EnvironmentFiles     Key = 17
+	Region               Key = 18
 )
 
 var keyToString = map[Key]string{
@@ -45,6 +46,7 @@ var keyToString = map[Key]string{
 	NodeVersion:          "node version",
 	EnvironmentVariables: "environment variables",
 	EnvironmentFiles:     "environment files",
+	Region:               "region",
 }
 
 func (k Key) String() string {
