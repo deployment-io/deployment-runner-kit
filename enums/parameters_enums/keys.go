@@ -26,6 +26,7 @@ const (
 	EnvironmentVariables Key = 16
 	EnvironmentFiles     Key = 17
 	Region               Key = 18
+	CloudfrontID         Key = 19
 )
 
 var keyToString = map[Key]string{

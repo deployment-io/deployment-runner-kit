@@ -11,6 +11,7 @@ type UpdateBuildDtoV1 struct {
 	CommitHash    string
 	CommitMessage string
 	Status        build_enums.Status
+	ErrorMessage  string
 }
 
 type UpdateBuildsArgsV1 struct {
