@@ -27,6 +27,7 @@ const (
 	EnvironmentFiles     Key = 17
 	Region               Key = 18
 	CloudfrontID         Key = 19
+	CommitHash           Key = 20
 )
 
 var keyToString = map[Key]string{
@@ -48,6 +49,8 @@ var keyToString = map[Key]string{
 	EnvironmentVariables: "environment variables",
 	EnvironmentFiles:     "environment files",
 	Region:               "region",
+	CloudfrontID:         "cloudfront",
+	CommitHash:           "commit hash",
 }
 
 func (k Key) String() string {
