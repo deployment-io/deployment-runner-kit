@@ -3,6 +3,7 @@ package jobs
 import (
 	"fmt"
 	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strings"
 )
 
@@ -14,7 +15,7 @@ type ContextV1 struct {
 }
 
 type ParameterType interface {
-	int | string | uint | map[string]string
+	int | string | uint | map[string]string | primitive.A
 }
 
 func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key) (T, error) {
