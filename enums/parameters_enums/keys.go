@@ -39,6 +39,7 @@ const (
 	ElasticIPAllocationID Key = 29
 	NatGatewayID          Key = 30
 	RouteTables           Key = 31
+	EcsClusterArn         Key = 32
 )
 
 var keyToString = map[Key]string{
@@ -73,6 +74,7 @@ var keyToString = map[Key]string{
 	ElasticIPAllocationID: "elastic ip allocation id",
 	NatGatewayID:          "nat gateway id",
 	RouteTables:           "route tables",
+	EcsClusterArn:         "ecs cluster arn",
 }
 
 func (k Key) String() string {
