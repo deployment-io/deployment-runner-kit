@@ -1,8 +1,10 @@
 package jobs
 
 import (
+	"encoding/gob"
 	"fmt"
 	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
+	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strings"
 )
@@ -15,7 +17,13 @@ type ContextV1 struct {
 }
 
 type ParameterType interface {
-	int | string | uint | map[string]string | primitive.A
+	int | string | uint | map[string]string | primitive.A | region_enums.Type
+}
+
+func RegisterGobDataTypes() {
+	gob.Register(map[string]string{})
+	gob.Register(primitive.A{})
+	gob.Register(region_enums.MaxType)
 }
 
 func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key) (T, error) {

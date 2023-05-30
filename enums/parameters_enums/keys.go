@@ -33,6 +33,12 @@ const (
 	Runtime               Key = 23
 	DockerImageNameAndTag Key = 24
 	DockerBuildArgs       Key = 25
+	VpcID                 Key = 26
+	InternetGatewayID     Key = 27
+	Subnets               Key = 28
+	ElasticIPAllocationID Key = 29
+	NatGatewayID          Key = 30
+	RouteTables           Key = 31
 )
 
 var keyToString = map[Key]string{
@@ -60,6 +66,13 @@ var keyToString = map[Key]string{
 	Memory:                "memory",
 	Runtime:               "runtime",
 	DockerImageNameAndTag: "docker image name and tag",
+	DockerBuildArgs:       "docker build arguments",
+	VpcID:                 "vpc id",
+	InternetGatewayID:     "internet gateway id",
+	Subnets:               "subnets map",
+	ElasticIPAllocationID: "elastic ip allocation id",
+	NatGatewayID:          "nat gateway id",
+	RouteTables:           "route tables",
 }
 
 func (k Key) String() string {
