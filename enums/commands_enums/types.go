@@ -14,6 +14,7 @@ const (
 	BuildDockerImage    Type = 5
 	CreateAwsVpc        Type = 6
 	CreateEcsCluster    Type = 7
+	UploadImageToEcr    Type = 8
 )
 
 var typeToString = map[Type]string{
@@ -24,6 +25,7 @@ var typeToString = map[Type]string{
 	BuildDockerImage:    "Build docker image",
 	CreateAwsVpc:        "Create AWS VPC",
 	CreateEcsCluster:    "Create ECS Cluster",
+	UploadImageToEcr:    "Upload image to ECR",
 }
 
 func (t Type) String() string {

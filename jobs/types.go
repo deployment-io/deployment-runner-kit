@@ -6,7 +6,6 @@ import (
 	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
 	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"strings"
 )
 
 type ContextV1 struct {
@@ -17,13 +16,14 @@ type ContextV1 struct {
 }
 
 type ParameterType interface {
-	int | string | uint | map[string]string | primitive.A | region_enums.Type
+	int | int32 | string | uint | map[string]string | primitive.A | region_enums.Type | []string
 }
 
 func RegisterGobDataTypes() {
 	gob.Register(map[string]string{})
 	gob.Register(primitive.A{})
 	gob.Register(region_enums.MaxType)
+	gob.Register([]string{})
 }
 
 func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key) (T, error) {
@@ -39,22 +39,6 @@ func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]inte
 	return v, nil
 }
 
-func EncodeEnvironmentVariablesToString(envVariables map[string]string) string {
-	envString := ""
-	for k, v := range envVariables {
-		entry := fmt.Sprintf("%s=%s", k, v)
-		envString += entry + "\n"
-	}
-	return envString
-}
-
-func DecodeEnvironmentVariablesToSlice(envVariables string) []string {
-	envString := strings.TrimSpace(envVariables)
-	envVariablesInSlice := strings.Split(envString, "\n")
-	var envVariablesSlice []string
-	for _, evIn := range envVariablesInSlice {
-		ev := strings.TrimSpace(evIn)
-		envVariablesSlice = append(envVariablesSlice, ev)
-	}
-	return envVariablesSlice
+func SetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key, v T) {
+	parameters[k] = v
 }
