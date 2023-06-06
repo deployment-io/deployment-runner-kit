@@ -24,7 +24,7 @@ const (
 	PublishDirectory        Key = 14
 	NodeVersion             Key = 15
 	EnvironmentVariables    Key = 16 //map[string][string]
-	EnvironmentFiles        Key = 17
+	EnvironmentFiles        Key = 17 //map[string][string]
 	Region                  Key = 18
 	CloudfrontID            Key = 19
 	CommitHash              Key = 20
@@ -48,7 +48,11 @@ const (
 	EcrRepositoryUriWithTag Key = 38
 	EcsTaskExecutionRole    Key = 39
 	PrivateSubnets          Key = 40 //[]string/primitive.A
-
+	AlbSecurityGroupId      Key = 41
+	LoadBalancerArn         Key = 42
+	TargetGroupArn          Key = 43
+	EcsServiceArn           Key = 44
+	TaskDefinitionArn       Key = 45
 )
 
 var keyToString = map[Key]string{
@@ -92,6 +96,11 @@ var keyToString = map[Key]string{
 	EcrRepositoryUriWithTag: "ecr repository with tag",
 	EcsTaskExecutionRole:    "ecs task execution role",
 	PrivateSubnets:          "private subnets",
+	AlbSecurityGroupId:      "alb security group id",
+	LoadBalancerArn:         "load balancer arn",
+	TargetGroupArn:          "target group arn",
+	EcsServiceArn:           "ecs service arn",
+	TaskDefinitionArn:       "task definition arn",
 }
 
 func (k Key) String() string {

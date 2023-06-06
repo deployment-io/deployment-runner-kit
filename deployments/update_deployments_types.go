@@ -9,6 +9,14 @@ type UpdateDeploymentDtoV1 struct {
 	CloudfrontDistributionID         string
 	CloudfrontDistributionArn        string
 	CloudfrontDistributionDomainName string
+	EcrRepositoryUri                 string
+	AlbSecurityGroupId               string
+	AlbSecurityIngressRuleId         string
+	AlbSecurityEgressRuleId          string
+	TargetGroupArn                   string
+	ListenerArn                      string
+	LoadBalancerArn                  string
+	EcsServiceArn                    string
 }
 
 type UpdateDeploymentsArgsV1 struct {

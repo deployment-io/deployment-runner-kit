@@ -4,6 +4,7 @@ import (
 	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
 	"github.com/deployment-io/deployment-runner-kit/enums/vpc_enums"
 	"github.com/deployment-io/deployment-runner-kit/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -46,12 +47,32 @@ type UpsertVpcsReplyV1 struct {
 	Done bool
 }
 
-func GetSubnetsMapFromDto(subnetsFromDB []SubnetDtoV1) map[string]string {
+func GetSubnetsMapFromDto(subnetsFromDto []SubnetDtoV1) map[string]string {
 	subnetsMap := make(map[string]string)
-	for _, subnet := range subnetsFromDB {
+	for _, subnet := range subnetsFromDto {
 		subnetsMap[subnet.Name] = subnet.ID
 	}
 	return subnetsMap
+}
+
+func GetPrivateSubnetIdsFromDto(subnetsFromDto []SubnetDtoV1) primitive.A {
+	var privateSubnets primitive.A
+	for _, subnet := range subnetsFromDto {
+		if subnet.IsPrivate == True {
+			privateSubnets = append(privateSubnets, subnet.ID)
+		}
+	}
+	return privateSubnets
+}
+
+func GetPublicSubnetIdsFromDto(subnetsFromDto []SubnetDtoV1) primitive.A {
+	var publicSubnets primitive.A
+	for _, subnet := range subnetsFromDto {
+		if subnet.IsPrivate == False {
+			publicSubnets = append(publicSubnets, subnet.ID)
+		}
+	}
+	return publicSubnets
 }
 
 func GetRouteTablesMapFromDto(routeTablesFromDB []RouteTableDtoV1) map[string]string {
