@@ -1,5 +1,7 @@
 package parameters_enums
 
+import "fmt"
+
 /*
 RepoCloneUrl
 RepoName
@@ -36,8 +38,8 @@ const (
 	VpcID                   Key = 26
 	InternetGatewayID       Key = 27
 	Subnets                 Key = 28 //map[string]string
-	ElasticIPAllocationID   Key = 29
-	NatGatewayID            Key = 30
+	ElasticIPAllocations    Key = 29 //map[string]string
+	NatGateways             Key = 30 //map[string]string
 	RouteTables             Key = 31 //map[string]string
 	EcsClusterArn           Key = 32
 	VpcCidr                 Key = 33
@@ -84,8 +86,8 @@ var keyToString = map[Key]string{
 	VpcID:                   "vpc id",
 	InternetGatewayID:       "internet gateway id",
 	Subnets:                 "subnets map",
-	ElasticIPAllocationID:   "elastic ip allocation id",
-	NatGatewayID:            "nat gateway id",
+	ElasticIPAllocations:    "elastic ip allocations map",
+	NatGateways:             "nat gateways map",
 	RouteTables:             "route tables",
 	EcsClusterArn:           "ecs cluster arn",
 	VpcCidr:                 "vpc cidr",
@@ -109,4 +111,60 @@ func (k Key) String() string {
 		return ""
 	}
 	return s
+}
+
+var keyMap = map[Key]string{
+	RepoCloneUrl:            "1",
+	RepoName:                "2",
+	RepoBranch:              "3",
+	RepoProviderToken:       "4",
+	RepoDirectoryPath:       "5",
+	RepoGitProvider:         "6",
+	LoggerType:              "7",
+	OrganizationID:          "8",
+	DeploymentID:            "9",
+	BuildID:                 "10",
+	EnvironmentID:           "11",
+	RootDirectory:           "12",
+	BuildCommand:            "13",
+	PublishDirectory:        "14",
+	NodeVersion:             "15",
+	EnvironmentVariables:    "16", //map[string][string]
+	EnvironmentFiles:        "17", //map[string][string]
+	Region:                  "18",
+	CloudfrontID:            "19",
+	CommitHash:              "20",
+	Cpu:                     "21",
+	Memory:                  "22",
+	Runtime:                 "23",
+	DockerImageNameAndTag:   "24",
+	DockerBuildArgs:         "25",
+	VpcID:                   "26",
+	InternetGatewayID:       "27",
+	Subnets:                 "28", //map[string]string
+	ElasticIPAllocations:    "29", //map[string]string
+	NatGateways:             "30", //map[string]string
+	RouteTables:             "31", //map[string]string
+	EcsClusterArn:           "32",
+	VpcCidr:                 "33",
+	Port:                    "34",
+	HealthCheckPath:         "35",
+	PublicSubnets:           "36", //[]string/primitive.A
+	EcrRepositoryUri:        "37",
+	EcrRepositoryUriWithTag: "38",
+	EcsTaskExecutionRole:    "39",
+	PrivateSubnets:          "40", //[]string/primitive.A
+	AlbSecurityGroupId:      "41",
+	LoadBalancerArn:         "42",
+	TargetGroupArn:          "43",
+	EcsServiceArn:           "44",
+	TaskDefinitionArn:       "45",
+}
+
+func (k Key) Key() (string, error) {
+	s, ok := keyMap[k]
+	if !ok {
+		return "", fmt.Errorf("error finding key for %s", k.String())
+	}
+	return s, nil
 }

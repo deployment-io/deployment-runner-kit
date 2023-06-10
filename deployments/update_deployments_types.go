@@ -16,6 +16,7 @@ type UpdateDeploymentDtoV1 struct {
 	TargetGroupArn                   string
 	ListenerArn                      string
 	LoadBalancerArn                  string
+	LoadBalancerDns                  string
 	EcsServiceArn                    string
 }
 

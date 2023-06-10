@@ -26,16 +26,28 @@ type RouteTableDtoV1 struct {
 	IsPrivate string
 }
 
+type NatGatewayDtoV1 struct {
+	Name                    string
+	ID                      string
+	ElasticIPAllocationName string
+	ElasticIPAllocationId   string
+}
+
+type DefaultSecurityIngressRuleDtoV1 struct {
+	ID string
+}
+
 type UpsertVpcDtoV1 struct {
-	Type                  vpc_enums.Type
-	Region                region_enums.Type
-	VpcId                 string
-	VpcCidr               string
-	InternetGatewayId     string
-	ElasticIPAllocationId string
-	NatGatewayId          string
-	Subnets               []SubnetDtoV1
-	RouteTables           []RouteTableDtoV1
+	Type                        vpc_enums.Type
+	Region                      region_enums.Type
+	VpcId                       string
+	VpcCidr                     string
+	InternetGatewayId           string
+	NatGateways                 []NatGatewayDtoV1
+	Subnets                     []SubnetDtoV1
+	RouteTables                 []RouteTableDtoV1
+	DefaultSecurityIngressRules []DefaultSecurityIngressRuleDtoV1
+	DefaultSecurityGroupId      string
 }
 
 type UpsertVpcsArgsV1 struct {
@@ -75,10 +87,26 @@ func GetPublicSubnetIdsFromDto(subnetsFromDto []SubnetDtoV1) primitive.A {
 	return publicSubnets
 }
 
-func GetRouteTablesMapFromDto(routeTablesFromDB []RouteTableDtoV1) map[string]string {
+func GetRouteTablesMapFromDto(routeTablesFromDto []RouteTableDtoV1) map[string]string {
 	routeTablesMap := make(map[string]string)
-	for _, routeTable := range routeTablesFromDB {
+	for _, routeTable := range routeTablesFromDto {
 		routeTablesMap[routeTable.Name] = routeTable.ID
 	}
 	return routeTablesMap
+}
+
+func GetNatGatewaysMapFromDto(natGatewaysFromDto []NatGatewayDtoV1) map[string]string {
+	natGatewaysMap := make(map[string]string)
+	for _, n := range natGatewaysFromDto {
+		natGatewaysMap[n.Name] = n.ID
+	}
+	return natGatewaysMap
+}
+
+func GetAllocationsMapFromDto(natGatewaysFromDto []NatGatewayDtoV1) map[string]string {
+	allocationsMap := make(map[string]string)
+	for _, n := range natGatewaysFromDto {
+		allocationsMap[n.ElasticIPAllocationName] = n.ElasticIPAllocationId
+	}
+	return allocationsMap
 }

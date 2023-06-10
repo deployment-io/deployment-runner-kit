@@ -16,18 +16,24 @@ type ContextV1 struct {
 }
 
 type ParameterType interface {
-	int | int32 | string | uint | map[string]string | primitive.A | region_enums.Type | []string
+	int | int64 | string | map[string]string | primitive.A | primitive.D | []string | map[string]interface{}
 }
 
 func RegisterGobDataTypes() {
 	gob.Register(map[string]string{})
+	gob.Register(map[string]interface{}{})
 	gob.Register(primitive.A{})
 	gob.Register(region_enums.MaxType)
 	gob.Register([]string{})
 }
 
-func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key) (T, error) {
-	i, ok := parameters[k]
+func GetParameterValue[T ParameterType](parameters map[string]interface{}, k parameters_enums.Key) (T, error) {
+	key, err := k.Key()
+	if err != nil {
+		var zeroValue T
+		return zeroValue, err
+	}
+	i, ok := parameters[key]
 	if !ok {
 		var zeroValue T
 		return zeroValue, fmt.Errorf("%s is missing", k.String())
@@ -39,6 +45,11 @@ func GetParameterValue[T ParameterType](parameters map[parameters_enums.Key]inte
 	return v, nil
 }
 
-func SetParameterValue[T ParameterType](parameters map[parameters_enums.Key]interface{}, k parameters_enums.Key, v T) {
-	parameters[k] = v
+func SetParameterValue[T ParameterType](parameters map[string]interface{}, k parameters_enums.Key, v T) error {
+	key, err := k.Key()
+	if err != nil {
+		return err
+	}
+	parameters[key] = v
+	return nil
 }

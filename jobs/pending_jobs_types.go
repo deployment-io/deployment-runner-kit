@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"github.com/deployment-io/deployment-runner-kit/enums/commands_enums"
-	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
 	"github.com/deployment-io/deployment-runner-kit/types"
 )
 
@@ -15,7 +14,7 @@ type PendingJobsArgsV1 struct {
 type PendingJobDtoV1 struct {
 	JobID        string
 	CommandEnums []commands_enums.Type
-	Parameters   map[parameters_enums.Key]interface{}
+	Parameters   map[string]interface{}
 }
 
 // PendingJobsDtoV1 represents v1 of a deployment jobs from the server
