@@ -55,6 +55,7 @@ const (
 	TargetGroupArn          Key = 43
 	EcsServiceArn           Key = 44
 	TaskDefinitionArn       Key = 45
+	InstallationId          Key = 46
 )
 
 var keyToString = map[Key]string{
@@ -103,6 +104,7 @@ var keyToString = map[Key]string{
 	TargetGroupArn:          "target group arn",
 	EcsServiceArn:           "ecs service arn",
 	TaskDefinitionArn:       "task definition arn",
+	InstallationId:          "installation id",
 }
 
 func (k Key) String() string {
@@ -159,6 +161,7 @@ var keyMap = map[Key]string{
 	TargetGroupArn:          "43",
 	EcsServiceArn:           "44",
 	TaskDefinitionArn:       "45",
+	InstallationId:          "46",
 }
 
 func (k Key) Key() (string, error) {
