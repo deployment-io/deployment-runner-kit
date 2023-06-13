@@ -8,11 +8,11 @@ const (
 	MaxType //always add new types before MaxType
 )
 
-var typeToString = map[Type]string{
+var TypeToString = map[Type]string{
 	EuWest1:  "eu-west-1",
 	ApSouth1: "ap-south-1",
 }
 
 func (a Type) String() string {
-	return typeToString[a]
+	return TypeToString[a]
 }
