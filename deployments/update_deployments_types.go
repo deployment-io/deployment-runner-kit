@@ -1,6 +1,7 @@
 package deployments
 
 import (
+	"github.com/deployment-io/deployment-runner-kit/enums/build_enums"
 	"github.com/deployment-io/deployment-runner-kit/types"
 )
 
@@ -18,6 +19,9 @@ type UpdateDeploymentDtoV1 struct {
 	LoadBalancerArn                  string
 	LoadBalancerDns                  string
 	EcsServiceArn                    string
+	LastDeploymentTs                 int64
+	ErrorMessage                     string
+	Status                           build_enums.Status
 }
 
 type UpdateDeploymentsArgsV1 struct {
