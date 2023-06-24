@@ -7,10 +7,11 @@ import (
 )
 
 type UpsertClusterDtoV1 struct {
-	Type       cluster_enums.Type
-	Region     region_enums.Type
-	Name       string
-	ClusterArn string
+	Type                    cluster_enums.Type
+	Region                  region_enums.Type
+	Name                    string
+	ClusterArn              string
+	EcsTaskExecutionRoleArn string
 }
 
 type UpsertClustersArgsV1 struct {

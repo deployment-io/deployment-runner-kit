@@ -48,7 +48,7 @@ const (
 	PublicSubnets           Key = 36 //[]string/primitive.A
 	EcrRepositoryUri        Key = 37
 	EcrRepositoryUriWithTag Key = 38
-	EcsTaskExecutionRole    Key = 39
+	EcsTaskExecutionRoleArn Key = 39
 	PrivateSubnets          Key = 40 //[]string/primitive.A
 	AlbSecurityGroupId      Key = 41
 	LoadBalancerArn         Key = 42
@@ -97,7 +97,7 @@ var keyToString = map[Key]string{
 	PublicSubnets:           "public subnets",
 	EcrRepositoryUri:        "ecr repository uri",
 	EcrRepositoryUriWithTag: "ecr repository with tag",
-	EcsTaskExecutionRole:    "ecs task execution role",
+	EcsTaskExecutionRoleArn: "ecs task execution role arn",
 	PrivateSubnets:          "private subnets",
 	AlbSecurityGroupId:      "alb security group id",
 	LoadBalancerArn:         "load balancer arn",
@@ -154,7 +154,7 @@ var keyMap = map[Key]string{
 	PublicSubnets:           "36", //[]string/primitive.A
 	EcrRepositoryUri:        "37",
 	EcrRepositoryUriWithTag: "38",
-	EcsTaskExecutionRole:    "39",
+	EcsTaskExecutionRoleArn: "39",
 	PrivateSubnets:          "40", //[]string/primitive.A
 	AlbSecurityGroupId:      "41",
 	LoadBalancerArn:         "42",
