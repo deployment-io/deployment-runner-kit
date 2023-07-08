@@ -56,6 +56,7 @@ const (
 	EcsServiceArn           Key = 44
 	TaskDefinitionArn       Key = 45
 	InstallationId          Key = 46
+	CpuArchitecture         Key = 47
 )
 
 var keyToString = map[Key]string{
@@ -105,6 +106,7 @@ var keyToString = map[Key]string{
 	EcsServiceArn:           "ecs service arn",
 	TaskDefinitionArn:       "task definition arn",
 	InstallationId:          "installation id",
+	CpuArchitecture:         "cpu architecture",
 }
 
 func (k Key) String() string {
@@ -162,6 +164,7 @@ var keyMap = map[Key]string{
 	EcsServiceArn:           "44",
 	TaskDefinitionArn:       "45",
 	InstallationId:          "46",
+	CpuArchitecture:         "47",
 }
 
 func (k Key) Key() (string, error) {
