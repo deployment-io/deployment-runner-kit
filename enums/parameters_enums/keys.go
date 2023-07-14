@@ -57,6 +57,7 @@ const (
 	TaskDefinitionArn       Key = 45
 	InstallationId          Key = 46
 	CpuArchitecture         Key = 47
+	ResponseHeaders         Key = 48
 )
 
 var keyToString = map[Key]string{
@@ -107,6 +108,7 @@ var keyToString = map[Key]string{
 	TaskDefinitionArn:       "task definition arn",
 	InstallationId:          "installation id",
 	CpuArchitecture:         "cpu architecture",
+	ResponseHeaders:         "response headers",
 }
 
 func (k Key) String() string {
@@ -165,6 +167,7 @@ var keyMap = map[Key]string{
 	TaskDefinitionArn:       "45",
 	InstallationId:          "46",
 	CpuArchitecture:         "47",
+	ResponseHeaders:         "48", //[][]string/primitive.A
 }
 
 func (k Key) Key() (string, error) {

@@ -16,7 +16,7 @@ type ContextV1 struct {
 }
 
 type ParameterType interface {
-	int | int64 | string | map[string]string | primitive.A | primitive.D | []string | map[string]interface{}
+	int | int64 | string | map[string]string | primitive.A | primitive.D | []string | map[string]interface{} | [][]string
 }
 
 func RegisterGobDataTypes() {
@@ -25,6 +25,7 @@ func RegisterGobDataTypes() {
 	gob.Register(primitive.A{})
 	gob.Register(region_enums.MaxType)
 	gob.Register([]string{})
+	gob.Register([][]string{{}})
 }
 
 func GetParameterValue[T ParameterType](parameters map[string]interface{}, k parameters_enums.Key) (T, error) {
