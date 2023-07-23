@@ -58,6 +58,12 @@ const (
 	InstallationId          Key = 46
 	CpuArchitecture         Key = 47
 	ResponseHeaders         Key = 48
+	Domains                 Key = 49
+	RedirectDomain          Key = 50
+	AcmCertificateArn       Key = 51
+	CertificateRegion       Key = 52
+	CertificateDomain       Key = 53
+	CertificateID           Key = 54
 )
 
 var keyToString = map[Key]string{
@@ -109,6 +115,12 @@ var keyToString = map[Key]string{
 	InstallationId:          "installation id",
 	CpuArchitecture:         "cpu architecture",
 	ResponseHeaders:         "response headers",
+	Domains:                 "domains",
+	RedirectDomain:          "redirect domain",
+	AcmCertificateArn:       "ACM certificate Arn",
+	CertificateRegion:       "Certificate region",
+	CertificateDomain:       "Certificate domain",
+	CertificateID:           "Certificate ID",
 }
 
 func (k Key) String() string {
@@ -168,6 +180,12 @@ var keyMap = map[Key]string{
 	InstallationId:          "46",
 	CpuArchitecture:         "47",
 	ResponseHeaders:         "48", //[][]string/primitive.A
+	Domains:                 "49", //[]string/primitive.A
+	RedirectDomain:          "50", //[]string/primitive.A - 0th element is from and 1st element is to
+	AcmCertificateArn:       "51",
+	CertificateRegion:       "52",
+	CertificateDomain:       "53",
+	CertificateID:           "54",
 }
 
 func (k Key) Key() (string, error) {
