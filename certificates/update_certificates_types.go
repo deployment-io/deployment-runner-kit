@@ -9,6 +9,7 @@ type UpdateCertificateDtoV1 struct {
 	CertificateArn string
 	CnameName      string
 	CnameValue     string
+	Verified       string
 }
 
 type UpdateCertificatesArgsV1 struct {

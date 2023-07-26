@@ -20,6 +20,7 @@ const (
 	DeployAwsCloudfrontViewerRequestFunction Type = 11
 	CreateAcmCertificate                     Type = 12
 	AddAwsWebServiceDomain                   Type = 13
+	VerifyAcmCertificate                     Type = 14
 )
 
 var typeToString = map[Type]string{
@@ -36,6 +37,7 @@ var typeToString = map[Type]string{
 	DeployAwsCloudfrontViewerRequestFunction: "CF function on viewer request event",
 	CreateAcmCertificate:                     "Create ACM certificate",
 	AddAwsWebServiceDomain:                   "Add AWS Web Service Domain",
+	VerifyAcmCertificate:                     "Verify ACM certificate",
 }
 
 func (t Type) String() string {

@@ -15,7 +15,8 @@ type UpdateDeploymentDtoV1 struct {
 	AlbSecurityIngressRuleId         string
 	AlbSecurityEgressRuleId          string
 	TargetGroupArn                   string
-	ListenerArn                      string
+	ListenerArnPort80                string
+	ListenerArnPort443               string
 	LoadBalancerArn                  string
 	LoadBalancerDns                  string
 	EcsServiceArn                    string

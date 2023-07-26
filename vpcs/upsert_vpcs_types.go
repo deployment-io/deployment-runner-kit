@@ -7,11 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	True  = "true"
-	False = "false"
-)
-
 type SubnetDtoV1 struct {
 	Name      string
 	ID        string
@@ -70,7 +65,7 @@ func GetSubnetsMapFromDto(subnetsFromDto []SubnetDtoV1) map[string]string {
 func GetPrivateSubnetIdsFromDto(subnetsFromDto []SubnetDtoV1) primitive.A {
 	var privateSubnets primitive.A
 	for _, subnet := range subnetsFromDto {
-		if subnet.IsPrivate == True {
+		if subnet.IsPrivate == types.True {
 			privateSubnets = append(privateSubnets, subnet.ID)
 		}
 	}
@@ -80,7 +75,7 @@ func GetPrivateSubnetIdsFromDto(subnetsFromDto []SubnetDtoV1) primitive.A {
 func GetPublicSubnetIdsFromDto(subnetsFromDto []SubnetDtoV1) primitive.A {
 	var publicSubnets primitive.A
 	for _, subnet := range subnetsFromDto {
-		if subnet.IsPrivate == False {
+		if subnet.IsPrivate == types.False {
 			publicSubnets = append(publicSubnets, subnet.ID)
 		}
 	}
