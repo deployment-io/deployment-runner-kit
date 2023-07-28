@@ -21,6 +21,8 @@ const (
 	CreateAcmCertificate                     Type = 12
 	AddAwsWebServiceDomain                   Type = 13
 	VerifyAcmCertificate                     Type = 14
+	DeleteAwsStaticSite                      Type = 15
+	DeleteAwsWebService                      Type = 16
 )
 
 var typeToString = map[Type]string{
@@ -38,6 +40,8 @@ var typeToString = map[Type]string{
 	CreateAcmCertificate:                     "Create ACM certificate",
 	AddAwsWebServiceDomain:                   "Add AWS Web Service Domain",
 	VerifyAcmCertificate:                     "Verify ACM certificate",
+	DeleteAwsStaticSite:                      "Delete AWS Static Site",
+	DeleteAwsWebService:                      "Delete AWS Web Service",
 }
 
 func (t Type) String() string {

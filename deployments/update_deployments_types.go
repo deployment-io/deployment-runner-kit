@@ -2,6 +2,7 @@ package deployments
 
 import (
 	"github.com/deployment-io/deployment-runner-kit/enums/build_enums"
+	"github.com/deployment-io/deployment-runner-kit/enums/deployment_enums"
 	"github.com/deployment-io/deployment-runner-kit/types"
 )
 
@@ -23,6 +24,7 @@ type UpdateDeploymentDtoV1 struct {
 	LastDeploymentTs                 int64
 	ErrorMessage                     string
 	Status                           build_enums.Status
+	DeletionState                    deployment_enums.DeletionState
 }
 
 type UpdateDeploymentsArgsV1 struct {
