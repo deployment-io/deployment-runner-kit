@@ -65,6 +65,7 @@ const (
 	CertificateDomain       Key = 53
 	CertificateID           Key = 54
 	ParentDomain            Key = 55
+	CreateMultipleNats      Key = 56
 )
 
 var keyToString = map[Key]string{
@@ -123,6 +124,7 @@ var keyToString = map[Key]string{
 	CertificateDomain:       "Certificate domain",
 	CertificateID:           "Certificate ID",
 	ParentDomain:            "Parent domain",
+	CreateMultipleNats:      "Create multiple nats",
 }
 
 func (k Key) String() string {
@@ -189,6 +191,7 @@ var keyMap = map[Key]string{
 	CertificateDomain:       "53",
 	CertificateID:           "54",
 	ParentDomain:            "55",
+	CreateMultipleNats:      "56",
 }
 
 func (k Key) Key() (string, error) {
