@@ -9,4 +9,5 @@ const (
 type AuthArgsV1 struct {
 	OrganizationID string
 	Token          string
+	DockerImage    string
 }

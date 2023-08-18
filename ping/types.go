@@ -10,5 +10,8 @@ type ArgsV1 struct {
 }
 
 type ReplyV1 struct {
-	Send string
+	Send               string
+	DockerUpgradeImage string
+	UpgradeFromTs      int64
+	UpgradeToTs        int64
 }
