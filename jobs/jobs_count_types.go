@@ -7,5 +7,6 @@ type JobsCountArgsV1 struct {
 }
 
 type JobsCountDtoV1 struct {
-	Count int
+	Count                  int
+	RunnerOnTimeoutSeconds int
 }
