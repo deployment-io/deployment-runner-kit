@@ -67,6 +67,8 @@ const (
 	ParentDomain            Key = 55
 	CreateMultipleNats      Key = 56
 	ErrorPages              Key = 57
+	PreviewID               Key = 58
+	IsPreview               Key = 59
 )
 
 var keyToString = map[Key]string{
@@ -127,6 +129,8 @@ var keyToString = map[Key]string{
 	ParentDomain:            "Parent domain",
 	CreateMultipleNats:      "Create multiple nats",
 	ErrorPages:              "error pages",
+	PreviewID:               "Preview ID",
+	IsPreview:               "Is the job of type preview",
 }
 
 func (k Key) String() string {
@@ -195,6 +199,8 @@ var keyMap = map[Key]string{
 	ParentDomain:            "55",
 	CreateMultipleNats:      "56",
 	ErrorPages:              "57", //[][]string/primitive.A
+	PreviewID:               "58",
+	IsPreview:               "59",
 }
 
 func (k Key) Key() (string, error) {
