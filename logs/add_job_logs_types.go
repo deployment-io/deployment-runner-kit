@@ -4,18 +4,18 @@ import (
 	"github.com/deployment-io/deployment-runner-kit/types"
 )
 
-type AddBuildLogDtoV1 struct {
+type AddJobLogDtoV1 struct {
 	ID           string
 	Message      string
 	ErrorMessage string
 	Ts           int64
 }
 
-type AddBuildLogsArgsV1 struct {
+type AddJobLogsArgsV1 struct {
 	types.AuthArgsV1
-	BuildLogs []AddBuildLogDtoV1
+	JobLogs []AddJobLogDtoV1
 }
 
-type AddBuildLogsReplyV1 struct {
+type AddJobLogsReplyV1 struct {
 	Done bool
 }
