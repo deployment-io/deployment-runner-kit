@@ -10,4 +10,7 @@ const (
 	PreviewDeletedSuccess   Type = 5
 	PreviewDeletionStarted  Type = 6
 	PreviewDeletionUndone   Type = 7
+	BuildCreated            Type = 8
+	BuildCompletedSuccess   Type = 9
+	BuildCompletedError     Type = 10
 )
