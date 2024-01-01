@@ -13,4 +13,6 @@ const (
 	BuildCreated            Type = 8
 	BuildCompletedSuccess   Type = 9
 	BuildCompletedError     Type = 10
+	HeadersUpdatedSuccess   Type = 11
+	HeadersUpdatedError     Type = 12
 )
