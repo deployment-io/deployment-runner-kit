@@ -16,10 +16,10 @@ const (
 	CreateEcsCluster                         Type = 7
 	UploadImageToEcr                         Type = 8
 	AddAwsStaticSiteResponseHeaders          Type = 9
-	AddAwsStaticSiteDomains                  Type = 10
+	UpdateAwsStaticSiteDomains               Type = 10
 	DeployAwsCloudfrontViewerRequestFunction Type = 11
 	CreateAcmCertificate                     Type = 12
-	AddAwsWebServiceDomain                   Type = 13
+	UpdateAwsWebServiceDomain                Type = 13
 	VerifyAcmCertificate                     Type = 14
 	DeleteAwsStaticSite                      Type = 15
 	DeleteAwsWebService                      Type = 16
@@ -35,10 +35,10 @@ var typeToString = map[Type]string{
 	CreateEcsCluster:                         "Create ECS Cluster",
 	UploadImageToEcr:                         "Upload image to ECR",
 	AddAwsStaticSiteResponseHeaders:          "Add AWS Static Site Response Headers",
-	AddAwsStaticSiteDomains:                  "Add AWS Static Site Domains",
+	UpdateAwsStaticSiteDomains:               "Update AWS Static Site Domains",
 	DeployAwsCloudfrontViewerRequestFunction: "CF function on viewer request event",
 	CreateAcmCertificate:                     "Create ACM certificate",
-	AddAwsWebServiceDomain:                   "Add AWS Web Service Domain",
+	UpdateAwsWebServiceDomain:                "Update AWS Web Service Domain",
 	VerifyAcmCertificate:                     "Verify ACM certificate",
 	DeleteAwsStaticSite:                      "Delete AWS Static Site",
 	DeleteAwsWebService:                      "Delete AWS Web Service",
