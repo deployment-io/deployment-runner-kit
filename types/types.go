@@ -11,3 +11,13 @@ type AuthArgsV1 struct {
 	Token          string
 	DockerImage    string
 }
+
+type AuthArgsV2 struct {
+	OrganizationID string
+	Token          string
+	DockerImage    string
+	CloudAccountID string
+	RunnerRegion   string
+	GoArch         string
+	GoOS           string
+}

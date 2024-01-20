@@ -22,3 +22,8 @@ type UpsertClustersArgsV1 struct {
 type UpsertClustersReplyV1 struct {
 	Done bool
 }
+
+type UpsertClustersArgsV2 struct {
+	types.AuthArgsV2
+	Clusters []UpsertClusterDtoV1
+}

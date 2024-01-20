@@ -21,3 +21,7 @@ type PendingJobDtoV1 struct {
 type PendingJobsDtoV1 struct {
 	Jobs []PendingJobDtoV1
 }
+
+type PendingJobsArgsV2 struct {
+	types.AuthArgsV2
+}
