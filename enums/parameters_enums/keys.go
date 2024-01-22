@@ -56,19 +56,19 @@ const (
 	EcsServiceArn           Key = 44
 	TaskDefinitionArn       Key = 45
 	InstallationId          Key = 46
-	CpuArchitecture         Key = 47
-	ResponseHeaders         Key = 48
-	Domains                 Key = 49
-	RedirectDomain          Key = 50
-	AcmCertificateArn       Key = 51
-	CertificateRegion       Key = 52
-	CertificateDomain       Key = 53
-	CertificateID           Key = 54
-	ParentDomain            Key = 55
-	CreateMultipleNats      Key = 56
-	ErrorPages              Key = 57
-	PreviewID               Key = 58
-	IsPreview               Key = 59
+	//CpuArchitecture         Key = 47
+	ResponseHeaders    Key = 48
+	Domains            Key = 49
+	RedirectDomain     Key = 50
+	AcmCertificateArn  Key = 51
+	CertificateRegion  Key = 52
+	CertificateDomain  Key = 53
+	CertificateID      Key = 54
+	ParentDomain       Key = 55
+	CreateMultipleNats Key = 56
+	ErrorPages         Key = 57
+	PreviewID          Key = 58
+	IsPreview          Key = 59
 )
 
 var keyToString = map[Key]string{
@@ -118,19 +118,19 @@ var keyToString = map[Key]string{
 	EcsServiceArn:           "ecs service arn",
 	TaskDefinitionArn:       "task definition arn",
 	InstallationId:          "installation id",
-	CpuArchitecture:         "cpu architecture",
-	ResponseHeaders:         "response headers",
-	Domains:                 "domains",
-	RedirectDomain:          "redirect domain",
-	AcmCertificateArn:       "ACM certificate Arn",
-	CertificateRegion:       "Certificate region",
-	CertificateDomain:       "Certificate domain",
-	CertificateID:           "Certificate ID",
-	ParentDomain:            "Parent domain",
-	CreateMultipleNats:      "Create multiple nats",
-	ErrorPages:              "error pages",
-	PreviewID:               "Preview ID",
-	IsPreview:               "Is the job of type preview",
+	//CpuArchitecture:         "cpu architecture",
+	ResponseHeaders:    "response headers",
+	Domains:            "domains",
+	RedirectDomain:     "redirect domain",
+	AcmCertificateArn:  "ACM certificate Arn",
+	CertificateRegion:  "Certificate region",
+	CertificateDomain:  "Certificate domain",
+	CertificateID:      "Certificate ID",
+	ParentDomain:       "Parent domain",
+	CreateMultipleNats: "Create multiple nats",
+	ErrorPages:         "error pages",
+	PreviewID:          "Preview ID",
+	IsPreview:          "Is the job of type preview",
 }
 
 func (k Key) String() string {
@@ -188,19 +188,19 @@ var keyMap = map[Key]string{
 	EcsServiceArn:           "44",
 	TaskDefinitionArn:       "45",
 	InstallationId:          "46",
-	CpuArchitecture:         "47",
-	ResponseHeaders:         "48", //[][]string/primitive.A
-	Domains:                 "49", //[]string/primitive.A
-	RedirectDomain:          "50", //[]string/primitive.A - 0th element is from and 1st element is to
-	AcmCertificateArn:       "51",
-	CertificateRegion:       "52",
-	CertificateDomain:       "53",
-	CertificateID:           "54",
-	ParentDomain:            "55",
-	CreateMultipleNats:      "56",
-	ErrorPages:              "57", //[][]string/primitive.A
-	PreviewID:               "58",
-	IsPreview:               "59",
+	//CpuArchitecture:         "47",
+	ResponseHeaders:    "48", //[][]string/primitive.A
+	Domains:            "49", //[]string/primitive.A
+	RedirectDomain:     "50", //[]string/primitive.A - 0th element is from and 1st element is to
+	AcmCertificateArn:  "51",
+	CertificateRegion:  "52",
+	CertificateDomain:  "53",
+	CertificateID:      "54",
+	ParentDomain:       "55",
+	CreateMultipleNats: "56",
+	ErrorPages:         "57", //[][]string/primitive.A
+	PreviewID:          "58",
+	IsPreview:          "59",
 }
 
 func (k Key) Key() (string, error) {

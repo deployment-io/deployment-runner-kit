@@ -54,6 +54,11 @@ type UpsertVpcsReplyV1 struct {
 	Done bool
 }
 
+type UpsertVpcsArgsV2 struct {
+	types.AuthArgsV2
+	Vpcs []UpsertVpcDtoV1
+}
+
 func GetSubnetsMapFromDto(subnetsFromDto []SubnetDtoV1) map[string]string {
 	subnetsMap := make(map[string]string)
 	for _, subnet := range subnetsFromDto {

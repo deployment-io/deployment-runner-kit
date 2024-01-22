@@ -15,3 +15,17 @@ type ReplyV1 struct {
 	UpgradeFromTs      int64
 	UpgradeToTs        int64
 }
+
+type ArgsV2 struct {
+	types.AuthArgsV2
+	Send      string
+	FirstPing bool
+}
+
+type ReplyV2 struct {
+	Send                         string
+	RunnerUpgradeDockerImage     string
+	ControllerUpgradeDockerImage string
+	UpgradeFromTs                int64
+	UpgradeToTs                  int64
+}

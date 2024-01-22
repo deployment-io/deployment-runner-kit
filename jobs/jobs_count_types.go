@@ -10,3 +10,7 @@ type JobsCountDtoV1 struct {
 	Count                  int
 	RunnerOnTimeoutSeconds int
 }
+
+type JobsCountArgsV2 struct {
+	types.AuthArgsV2
+}
