@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/acm"
+	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
@@ -66,6 +67,18 @@ func GetEcsClient(parameters map[string]interface{}) (*ecs.Client, error) {
 
 	ecsClient := ecs.NewFromConfig(cfg, func(o *ecs.Options) {
 		o.Region = region_enums.Type(region).String()
+	})
+	return ecsClient, nil
+}
+
+func GetEcsClientFromRegion(region string) (*ecs.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	ecsClient := ecs.NewFromConfig(cfg, func(o *ecs.Options) {
+		o.Region = region
 	})
 	return ecsClient, nil
 }
@@ -171,4 +184,17 @@ func GetStsClient(region string) (*sts.Client, error) {
 	})
 
 	return stsClient, nil
+}
+
+func GetAsgClient(region string) (*autoscaling.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	asgClient := autoscaling.NewFromConfig(cfg, func(options *autoscaling.Options) {
+		options.Region = region
+	})
+
+	return asgClient, nil
 }
