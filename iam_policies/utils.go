@@ -12,6 +12,7 @@ import (
 	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
 	"github.com/deployment-io/deployment-runner-kit/iam_policies/aws_policy_schema"
 	"net/url"
+	"time"
 )
 
 func getDeploymentRunnerTaskRoleName(osStr, cpuStr, organizationID, region string) string {
@@ -124,6 +125,8 @@ func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cp
 		if err != nil {
 			return err
 		}
+		//sleep for 60 seconds since new policies are added. AWS is not fast to update.
+		time.Sleep(60 * time.Second)
 	}
 	return nil
 }
