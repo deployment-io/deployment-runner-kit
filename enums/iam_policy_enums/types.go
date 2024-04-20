@@ -57,6 +57,7 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 	case AwsCertificateManager:
 		return []string{
 			"acm:*",
+			"elasticloadbalancing:*",
 		}, nil
 	default:
 		return nil, fmt.Errorf("error finding policy data actions")
