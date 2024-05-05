@@ -10,6 +10,7 @@ import (
 	"github.com/deployment-io/deployment-runner-kit/enums/iam_policy_enums"
 	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
 	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
+	"github.com/deployment-io/deployment-runner-kit/enums/runner_enums"
 	"github.com/deployment-io/deployment-runner-kit/iam_policies/aws_policy_schema"
 	"net/url"
 	"time"
@@ -29,7 +30,11 @@ func getDeploymentRunnerPolicyName(osStr, cpuStr, organizationID, region string)
 	return fmt.Sprintf("%s-%s-%s", policyName, organizationID, region)
 }
 
-func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cpuStr, organizationID, runnerRegion string) error {
+func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cpuStr, organizationID, runnerRegion string,
+	mode runner_enums.Mode, cloud runner_enums.TargetCloud) error {
+	if mode != runner_enums.AwsEcs || cloud != runner_enums.AwsCloud {
+		return nil
+	}
 	//check and add policy
 	regionKey, err := parameters_enums.Region.Key()
 	if err != nil {
