@@ -23,6 +23,7 @@ const (
 	VerifyAcmCertificate                     Type = 14
 	DeleteAwsStaticSite                      Type = 15
 	DeleteAwsWebService                      Type = 16
+	ListCloudWatchMetricsAwsEcsWebService    Type = 17
 )
 
 var typeToString = map[Type]string{
@@ -42,6 +43,7 @@ var typeToString = map[Type]string{
 	VerifyAcmCertificate:                     "Verify ACM certificate",
 	DeleteAwsStaticSite:                      "Delete AWS Static Site",
 	DeleteAwsWebService:                      "Delete AWS Web Service",
+	ListCloudWatchMetricsAwsEcsWebService:    "List cloudwatch metrics for AWS ECS Web Service",
 }
 
 func (t Type) String() string {

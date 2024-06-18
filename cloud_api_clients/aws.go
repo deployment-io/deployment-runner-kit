@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/acm"
 	"github.com/aws/aws-sdk-go-v2/service/autoscaling"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
+	"github.com/aws/aws-sdk-go-v2/service/cloudwatch"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	"github.com/aws/aws-sdk-go-v2/service/ecr"
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
@@ -197,4 +198,22 @@ func GetAsgClient(region string) (*autoscaling.Client, error) {
 	})
 
 	return asgClient, nil
+}
+
+func GetCloudwatchClient(parameters map[string]interface{}) (*cloudwatch.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	region, err := jobs.GetParameterValue[int64](parameters, parameters_enums.Region)
+	if err != nil {
+		return nil, err
+	}
+
+	cloudwatchClient := cloudwatch.NewFromConfig(cfg, func(options *cloudwatch.Options) {
+		options.Region = region_enums.Type(region).String()
+	})
+
+	return cloudwatchClient, nil
 }
