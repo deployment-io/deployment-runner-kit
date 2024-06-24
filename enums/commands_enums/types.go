@@ -24,6 +24,7 @@ const (
 	DeleteAwsStaticSite                      Type = 15
 	DeleteAwsWebService                      Type = 16
 	ListCloudWatchMetricsAwsEcsWebService    Type = 17
+	CreateSecretAwsSecretManager             Type = 18
 )
 
 var typeToString = map[Type]string{
@@ -44,6 +45,7 @@ var typeToString = map[Type]string{
 	DeleteAwsStaticSite:                      "Delete AWS Static Site",
 	DeleteAwsWebService:                      "Delete AWS Web Service",
 	ListCloudWatchMetricsAwsEcsWebService:    "List cloudwatch metrics for AWS ECS Web Service",
+	CreateSecretAwsSecretManager:             "Create secret in AWS Secret Manager",
 }
 
 func (t Type) String() string {

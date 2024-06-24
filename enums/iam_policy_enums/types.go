@@ -11,6 +11,7 @@ const (
 	AwsLogs
 	AwsEcrUpload
 	AwsCertificateManager
+	AwsSecretsManager
 	MaxType //always add new types before MaxType
 )
 
@@ -30,11 +31,13 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 			"autoscaling:*",
 			"ec2:*",
 			"ecs:*",
+			"secretsmanager:*",
 		}, nil
 	case AwsStaticSiteDeployment:
 		return []string{
 			"cloudfront:*",
 			"s3:*",
+			"secretsmanager:*",
 		}, nil
 	case AwsWebServiceDeployment:
 		return []string{
@@ -43,6 +46,7 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 			"ec2:*",
 			"ecs:*",
 			"elasticloadbalancing:*",
+			"secretsmanager:*",
 		}, nil
 	case AwsEcrUpload:
 		return []string{
@@ -58,6 +62,10 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 		return []string{
 			"acm:*",
 			"elasticloadbalancing:*",
+		}, nil
+	case AwsSecretsManager:
+		return []string{
+			"secretsmanager:*",
 		}, nil
 	default:
 		return nil, fmt.Errorf("error finding policy data actions")
