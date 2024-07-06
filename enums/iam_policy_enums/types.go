@@ -38,6 +38,7 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 			"cloudfront:*",
 			"s3:*",
 			"secretsmanager:*",
+			"route53:*",
 		}, nil
 	case AwsWebServiceDeployment:
 		return []string{
@@ -48,6 +49,7 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 			"elasticloadbalancing:*",
 			"secretsmanager:*",
 			"servicediscovery:*",
+			"route53:*",
 		}, nil
 	case AwsEcrUpload:
 		return []string{
