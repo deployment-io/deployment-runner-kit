@@ -56,7 +56,9 @@ const (
 	EcsServiceArn              Key = 44
 	TaskDefinitionArn          Key = 45
 	InstallationId             Key = 46
+
 	//CpuArchitecture         Key = 47
+
 	ResponseHeaders      Key = 48
 	Domains              Key = 49
 	RedirectDomain       Key = 50
@@ -76,6 +78,9 @@ const (
 	SecretValue          Key = 64
 	IsPrivateRegistry    Key = 65
 	DeployedFromImage    Key = 66
+	IsPrivateService     Key = 67
+	DeploymentName       Key = 68
+	EnvironmentName      Key = 69
 )
 
 var keyToString = map[Key]string{
@@ -145,6 +150,9 @@ var keyToString = map[Key]string{
 	SecretValue:          "secret value",
 	IsPrivateRegistry:    "is private registry",
 	DeployedFromImage:    "deployed from image",
+	IsPrivateService:     "is private service",
+	DeploymentName:       "deployment name",
+	EnvironmentName:      "environment name",
 }
 
 func (k Key) String() string {
@@ -222,6 +230,9 @@ var keyMap = map[Key]string{
 	SecretValue:          "64",
 	IsPrivateRegistry:    "65",
 	DeployedFromImage:    "66",
+	IsPrivateService:     "67",
+	DeploymentName:       "68",
+	EnvironmentName:      "69",
 }
 
 func (k Key) Key() (string, error) {

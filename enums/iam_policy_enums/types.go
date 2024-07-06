@@ -47,6 +47,7 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 			"ecs:*",
 			"elasticloadbalancing:*",
 			"secretsmanager:*",
+			"servicediscovery:*",
 		}, nil
 	case AwsEcrUpload:
 		return []string{

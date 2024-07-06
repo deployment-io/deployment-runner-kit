@@ -27,7 +27,9 @@ type UpdatePreviewDtoV1 struct {
 	LoadBalancerArn                  string
 	LoadBalancerDns                  string
 	EcsServiceArn                    string
+	DnsName                          string
 	DeletionState                    deployment_enums.DeletionState
+	NamespaceName                    string
 }
 
 type UpdatePreviewsArgsV1 struct {

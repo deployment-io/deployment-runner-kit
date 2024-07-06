@@ -25,6 +25,8 @@ const (
 	DeleteAwsWebService                      Type = 16
 	ListCloudWatchMetricsAwsEcsWebService    Type = 17
 	CreateSecretAwsSecretManager             Type = 18
+	DeployAwsPrivateService                  Type = 19
+	DeleteAwsPrivateService                  Type = 20
 )
 
 var typeToString = map[Type]string{
@@ -46,6 +48,8 @@ var typeToString = map[Type]string{
 	DeleteAwsWebService:                      "Delete AWS Web Service",
 	ListCloudWatchMetricsAwsEcsWebService:    "List cloudwatch metrics for AWS ECS Web Service",
 	CreateSecretAwsSecretManager:             "Create secret in AWS Secret Manager",
+	DeployAwsPrivateService:                  "Deploy AWS Private Service",
+	DeleteAwsPrivateService:                  "Delete AWS Private Service",
 }
 
 func (t Type) String() string {
