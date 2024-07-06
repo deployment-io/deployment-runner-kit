@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
+	"github.com/aws/aws-sdk-go-v2/service/servicediscovery"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
 	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
@@ -233,4 +234,20 @@ func GetSecretsManagerClient(parameters map[string]interface{}) (*secretsmanager
 	})
 
 	return secretsManagerClient, nil
+}
+
+func GetServiceDiscoveryClient(parameters map[string]interface{}) (*servicediscovery.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	region, err := jobs.GetParameterValue[int64](parameters, parameters_enums.Region)
+	if err != nil {
+		return nil, err
+	}
+	serviceDiscoveryClient := servicediscovery.NewFromConfig(cfg, func(options *servicediscovery.Options) {
+		options.Region = region_enums.Type(region).String()
+	})
+
+	return serviceDiscoveryClient, nil
 }
