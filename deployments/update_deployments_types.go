@@ -21,10 +21,12 @@ type UpdateDeploymentDtoV1 struct {
 	LoadBalancerArn                  string
 	LoadBalancerDns                  string
 	EcsServiceArn                    string
+	DnsName                          string
 	LastDeploymentTs                 int64
 	ErrorMessage                     string
 	Status                           build_enums.Status
 	DeletionState                    deployment_enums.DeletionState
+	NamespaceName                    string
 }
 
 type UpdateDeploymentsArgsV1 struct {
