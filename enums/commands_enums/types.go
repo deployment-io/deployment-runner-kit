@@ -27,6 +27,8 @@ const (
 	CreateSecretAwsSecretManager             Type = 18
 	DeployAwsPrivateService                  Type = 19
 	DeleteAwsPrivateService                  Type = 20
+	DeployAwsRdsDatabase                     Type = 21
+	DeleteAwsRdsDatabase                     Type = 22
 )
 
 var typeToString = map[Type]string{
@@ -50,6 +52,8 @@ var typeToString = map[Type]string{
 	CreateSecretAwsSecretManager:             "Create secret in AWS Secret Manager",
 	DeployAwsPrivateService:                  "Deploy AWS Private Service",
 	DeleteAwsPrivateService:                  "Delete AWS Private Service",
+	DeployAwsRdsDatabase:                     "Deploy AWS RDS Database",
+	DeleteAwsRdsDatabase:                     "Delete AWS RDS Database",
 }
 
 func (t Type) String() string {

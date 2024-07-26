@@ -27,6 +27,14 @@ type UpdateDeploymentDtoV1 struct {
 	Status                           build_enums.Status
 	DeletionState                    deployment_enums.DeletionState
 	NamespaceName                    string
+	Port                             int32
+	RdsDatabaseArn                   string
+	RdsUserPassword                  string
+	RdsUserName                      string
+	RdsEngineVersion                 string
+	AllocatedStorage                 int32
+	MaxAllocatedStorage              int32
+	DBInstanceClass                  string
 }
 
 type UpdateDeploymentsArgsV1 struct {

@@ -12,6 +12,7 @@ const (
 	AwsEcrUpload
 	AwsCertificateManager
 	AwsSecretsManager
+	AwsRdsDeployment
 	MaxType //always add new types before MaxType
 )
 
@@ -69,6 +70,10 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 	case AwsSecretsManager:
 		return []string{
 			"secretsmanager:*",
+		}, nil
+	case AwsRdsDeployment:
+		return []string{
+			"rds:*",
 		}, nil
 	default:
 		return nil, fmt.Errorf("error finding policy data actions")
