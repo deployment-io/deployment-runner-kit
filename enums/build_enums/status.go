@@ -13,13 +13,13 @@ const (
 )
 
 var typeToString = map[Status]string{
-	Pending:  "Pending",
-	Success:  "Success",
+	Pending:  "Deployment Pending",
+	Success:  "Deployment Successful",
 	Error:    "Error",
-	Running:  "Running",
-	Stopping: "Stopping",
-	Stopped:  "Stopped",
-	TimedOut: "Timed out",
+	Running:  "Deploying",
+	Stopping: "Stopping Deployment",
+	Stopped:  "Deployment Stopped",
+	TimedOut: "Deployment Timed out",
 }
 
 func (t Status) String() string {
