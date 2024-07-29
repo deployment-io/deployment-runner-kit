@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ecs"
 	"github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/secretsmanager"
 	"github.com/aws/aws-sdk-go-v2/service/servicediscovery"
@@ -250,4 +251,20 @@ func GetServiceDiscoveryClient(parameters map[string]interface{}) (*servicedisco
 	})
 
 	return serviceDiscoveryClient, nil
+}
+
+func GetRdsClient(parameters map[string]interface{}) (*rds.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	region, err := jobs.GetParameterValue[int64](parameters, parameters_enums.Region)
+	if err != nil {
+		return nil, err
+	}
+	rdsClient := rds.NewFromConfig(cfg, func(options *rds.Options) {
+		options.Region = region_enums.Type(region).String()
+	})
+
+	return rdsClient, nil
 }
