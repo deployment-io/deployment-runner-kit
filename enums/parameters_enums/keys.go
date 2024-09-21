@@ -89,6 +89,7 @@ const (
 	UseDeletionProtection      Key = 75
 	ApplyRdsChangesImmediately Key = 76
 	ShouldUpdatePassword       Key = 77
+	DockerFilePath             Key = 78
 )
 
 var keyToString = map[Key]string{
@@ -169,6 +170,7 @@ var keyToString = map[Key]string{
 	UseDeletionProtection:      "use deletion protection",
 	ApplyRdsChangesImmediately: "apply rds changes immediately",
 	ShouldUpdatePassword:       "should update password",
+	DockerFilePath:             "docker file path",
 }
 
 func (k Key) String() string {
@@ -257,6 +259,7 @@ var keyMap = map[Key]string{
 	UseDeletionProtection:      "75",
 	ApplyRdsChangesImmediately: "76",
 	ShouldUpdatePassword:       "77",
+	DockerFilePath:             "78",
 }
 
 func (k Key) Key() (string, error) {
