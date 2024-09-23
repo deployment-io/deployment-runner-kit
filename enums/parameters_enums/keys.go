@@ -90,6 +90,9 @@ const (
 	ApplyRdsChangesImmediately Key = 76
 	ShouldUpdatePassword       Key = 77
 	DockerFilePath             Key = 78
+	StartCommand               Key = 79
+	NixPacksUsernameKey        Key = 80
+	NixPacksPasswordKey        Key = 81
 )
 
 var keyToString = map[Key]string{
@@ -171,6 +174,9 @@ var keyToString = map[Key]string{
 	ApplyRdsChangesImmediately: "apply rds changes immediately",
 	ShouldUpdatePassword:       "should update password",
 	DockerFilePath:             "docker file path",
+	StartCommand:               "start command",
+	NixPacksUsernameKey:        "nix packs username",
+	NixPacksPasswordKey:        "nix packs password",
 }
 
 func (k Key) String() string {
@@ -260,6 +266,9 @@ var keyMap = map[Key]string{
 	ApplyRdsChangesImmediately: "76",
 	ShouldUpdatePassword:       "77",
 	DockerFilePath:             "78",
+	StartCommand:               "79",
+	NixPacksUsernameKey:        "80",
+	NixPacksPasswordKey:        "81",
 }
 
 func (k Key) Key() (string, error) {
