@@ -1,5 +1,9 @@
 package deployment_enums
 
+import (
+	"github.com/deployment-io/deployment-runner-kit/enums/commands_enums"
+)
+
 type Runtime uint
 
 const (
@@ -29,4 +33,13 @@ var runtimeToString = map[Runtime]string{
 
 func (r Runtime) String() string {
 	return runtimeToString[r]
+}
+
+func (r Runtime) GetBuildCommand() commands_enums.Type {
+	switch r {
+	case Docker:
+		return commands_enums.BuildDockerImage
+	default:
+		return commands_enums.BuildNixPacksImage
+	}
 }
