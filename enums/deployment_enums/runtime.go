@@ -18,7 +18,7 @@ const (
 )
 
 func GetRuntimes() []Runtime {
-	return []Runtime{Docker, Elixir, Go, Node, Python3, Ruby, Rust}
+	return []Runtime{Docker, Go, Node, Python3, Rust}
 }
 
 var runtimeToString = map[Runtime]string{
@@ -26,7 +26,7 @@ var runtimeToString = map[Runtime]string{
 	Elixir:  "Elixir",
 	Go:      "Go",
 	Node:    "Node",
-	Python3: "Python3",
+	Python3: "Python",
 	Ruby:    "Ruby",
 	Rust:    "Rust",
 }
