@@ -30,9 +30,13 @@ func getDeploymentRunnerPolicyName(osStr, cpuStr, organizationID, region string)
 	return fmt.Sprintf("%s-%s-%s", policyName, organizationID, region)
 }
 
+func shouldAddPolicy(mode runner_enums.Mode, cloud runner_enums.TargetCloud) bool {
+	return (mode == runner_enums.Saas || mode == runner_enums.AwsEcs) && cloud == runner_enums.AwsCloud
+}
+
 func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cpuStr, organizationID, runnerRegion string,
 	mode runner_enums.Mode, cloud runner_enums.TargetCloud) error {
-	if mode != runner_enums.AwsEcs || cloud != runner_enums.AwsCloud {
+	if !shouldAddPolicy(mode, cloud) {
 		return nil
 	}
 	//check and add policy

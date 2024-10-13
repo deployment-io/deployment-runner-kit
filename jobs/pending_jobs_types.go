@@ -25,3 +25,18 @@ type PendingJobsDtoV1 struct {
 type PendingJobsArgsV2 struct {
 	types.AuthArgsV2
 }
+
+type PendingJobsForSaasArgsV1 struct {
+	types.AuthArgsV2
+}
+
+type PendingJobForSaasDtoV1 struct {
+	JobID          string
+	OrganizationID string
+	CommandEnums   []commands_enums.Type
+	Parameters     map[string]interface{}
+}
+
+type PendingJobsForSaasDtoV1 struct {
+	Jobs []PendingJobForSaasDtoV1
+}
