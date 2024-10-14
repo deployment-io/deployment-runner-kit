@@ -14,3 +14,12 @@ type JobsCountDtoV1 struct {
 type JobsCountArgsV2 struct {
 	types.AuthArgsV2
 }
+
+type SaasJobsCountArgsV1 struct {
+	types.AuthArgsV2
+}
+
+type SaasJobsCountDtoV1 struct {
+	Count                  int
+	RunnerOnTimeoutSeconds int
+}

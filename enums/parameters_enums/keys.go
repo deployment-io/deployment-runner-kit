@@ -17,7 +17,7 @@ const (
 	RepoDirectoryPath          Key = 5
 	RepoGitProvider            Key = 6
 	LoggerType                 Key = 7
-	OrganizationID             Key = 8
+	OrganizationIDNamespace    Key = 8
 	DeploymentID               Key = 9
 	BuildID                    Key = 10
 	EnvironmentID              Key = 11
@@ -93,6 +93,7 @@ const (
 	StartCommand               Key = 79
 	NixPacksUsernameKey        Key = 80
 	NixPacksPasswordKey        Key = 81
+	OrganizationIdFromJob      Key = 82
 )
 
 var keyToString = map[Key]string{
@@ -103,7 +104,7 @@ var keyToString = map[Key]string{
 	RepoDirectoryPath:          "repo directory path",
 	RepoGitProvider:            "repo git provider",
 	LoggerType:                 "logger type",
-	OrganizationID:             "organization id",
+	OrganizationIDNamespace:    "organization id namespace",
 	DeploymentID:               "deployment id",
 	BuildID:                    "build id",
 	EnvironmentID:              "environment id",
@@ -177,6 +178,7 @@ var keyToString = map[Key]string{
 	StartCommand:               "start command",
 	NixPacksUsernameKey:        "nix packs username",
 	NixPacksPasswordKey:        "nix packs password",
+	OrganizationIdFromJob:      "org id from job",
 }
 
 func (k Key) String() string {
@@ -195,7 +197,7 @@ var keyMap = map[Key]string{
 	RepoDirectoryPath:          "5",
 	RepoGitProvider:            "6",
 	LoggerType:                 "7",
-	OrganizationID:             "8",
+	OrganizationIDNamespace:    "8",
 	DeploymentID:               "9",
 	BuildID:                    "10",
 	EnvironmentID:              "11",
@@ -269,6 +271,7 @@ var keyMap = map[Key]string{
 	StartCommand:               "79",
 	NixPacksUsernameKey:        "80",
 	NixPacksPasswordKey:        "81",
+	OrganizationIdFromJob:      "82",
 }
 
 func (k Key) Key() (string, error) {
