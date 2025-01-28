@@ -1,9 +1,5 @@
 package commands_enums
 
-/*
-CheckoutRepo
-*/
-
 type Type uint
 
 const (
@@ -30,6 +26,7 @@ const (
 	DeployAwsRdsDatabase                     Type = 21
 	DeleteAwsRdsDatabase                     Type = 22
 	BuildNixPacksImage                       Type = 23
+	RunNewAutomation                         Type = 24
 )
 
 var typeToString = map[Type]string{
@@ -56,6 +53,7 @@ var typeToString = map[Type]string{
 	DeployAwsRdsDatabase:                     "Deploy AWS RDS Database",
 	DeleteAwsRdsDatabase:                     "Delete AWS RDS Database",
 	BuildNixPacksImage:                       "Build NixPacks Image",
+	RunNewAutomation:                         "Run New Automation",
 }
 
 func (t Type) String() string {
