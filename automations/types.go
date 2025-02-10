@@ -11,8 +11,6 @@ type NodeDtoV1 struct {
 	Children     []string
 	IsStart      bool
 	NodeType     automation_enums.NodeType
-	Name         string
-	Role         string
 	Goal         string
 	Backstory    string
 	ToolType     automation_enums.ToolType
