@@ -10,6 +10,7 @@ const (
 	ChatTrigger
 	GetCPUMemoryUsageTool
 	GetApplicationLogsTool
+	QueryCodeTool
 
 	NodeTypeMax //always add new types before NodeTypeMax
 )
@@ -26,6 +27,8 @@ func GetNodeTypeFromKey(key string) (NodeType, error) {
 		return GetCPUMemoryUsageTool, nil
 	case "getApplicationLogsTool":
 		return GetApplicationLogsTool, nil
+	case "queryCodeTool":
+		return QueryCodeTool, nil
 	}
 	return 0, fmt.Errorf("unknown node type %s", key)
 }
@@ -36,6 +39,7 @@ var typeToString = map[NodeType]string{
 	ChatTrigger:            "Chat Trigger",
 	GetCPUMemoryUsageTool:  "CPU Memory Usage Tool",
 	GetApplicationLogsTool: "Application Logs Tool",
+	QueryCodeTool:          "Query Code Tool",
 }
 
 func (n NodeType) String() string {
@@ -49,6 +53,8 @@ func (n NodeType) IsToolType() bool {
 	case GetCPUMemoryUsageTool:
 		return true
 	case GetApplicationLogsTool:
+		return true
+	case QueryCodeTool:
 		return true
 	default:
 		return false

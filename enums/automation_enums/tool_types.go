@@ -9,6 +9,7 @@ const (
 	GetCPUMemoryUsage ToolType = iota + 1
 	SendEmail
 	GetApplicationLogs
+	QueryCode
 
 	ToolTypeMax //always add new types before ToolTypeMax
 )
@@ -18,6 +19,7 @@ var toolTypeToStringMap = map[ToolType]string{
 	GetCPUMemoryUsage:  "GetCPUMemoryUsage",
 	SendEmail:          "Email",
 	GetApplicationLogs: "GetApplicationLogs",
+	QueryCode:          "QueryCode",
 }
 
 // String returns the string representation of the tool type
@@ -37,6 +39,12 @@ var toolTypeToEntities = map[ToolType][]Entity{
 		WebService,
 		PrivateService,
 	},
+	QueryCode: {
+		StaticSite,
+		WebService,
+		PrivateService,
+		Repository,
+	},
 }
 
 // GetEntities returns the entities that can run this tool type
@@ -52,6 +60,8 @@ func GetToolTypeFromNodeType(nodeType NodeType) (ToolType, error) {
 		return GetCPUMemoryUsage, nil
 	case GetApplicationLogsTool:
 		return GetApplicationLogs, nil
+	case QueryCodeTool:
+		return QueryCode, nil
 
 	default:
 		return 0, fmt.Errorf("node type is not of tool type")

@@ -24,15 +24,16 @@ type MessageDataDtoV1 struct {
 }
 
 type AutomationDataDtoV1 struct {
-	ID                 string
-	Name               string
-	Goal               string
-	StartNodeID        string
-	Entity             automation_enums.Entity
-	NodesMap           map[string]NodeDtoV1
-	ChatHistory        []MessageDataDtoV1
-	LlmModelType       llm_enums.ModelType
-	OpenAIAPIKey       string
-	OpenAIBaseUrl      string
-	ExtraHelpAvailable bool
+	ID                    string
+	Name                  string
+	Goal                  string
+	StartNodeID           string
+	Entity                automation_enums.Entity
+	NodesMap              map[string]NodeDtoV1
+	ChatHistory           []MessageDataDtoV1
+	LlmModelType          llm_enums.ModelType
+	LlmCodeQueryModelType llm_enums.ModelType
+	OpenAIAPIKey          string
+	OpenAIBaseUrl         string
+	ExtraHelpAvailable    bool
 }
