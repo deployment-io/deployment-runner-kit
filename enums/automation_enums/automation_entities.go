@@ -8,6 +8,7 @@ const (
 	PrivateService
 	Environment
 	Database
+	Repository
 
 	EntityMax //add others before EntityMax
 )
@@ -18,6 +19,7 @@ var entityToString = map[Entity]string{
 	PrivateService: "Private service automation",
 	Environment:    "Environment automation",
 	Database:       "Database automation",
+	Repository:     "Repository automation",
 }
 
 func (e Entity) String() string {
@@ -28,6 +30,7 @@ func (e Entity) String() string {
 var entityToTools = map[Entity][]ToolType{
 	WebService:     {GetCPUMemoryUsage},
 	PrivateService: {GetCPUMemoryUsage},
+	Repository:     {QueryCode},
 	//StaticSite:     {"Hugo", "Jekyll"},
 	//Environment:    {"Terraform", "Ansible"},
 	//Database:       {"PostgreSQL", "MySQL"},
