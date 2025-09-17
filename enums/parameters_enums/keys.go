@@ -103,6 +103,10 @@ const (
 	EmailToolFromAddress         Key = 89
 	DebugAutomation              Key = 90
 	DebugOpenAICallsInAutomation Key = 91
+	AgentData                    Key = 92 //AgentDtoV1
+	AgentID                      Key = 93
+	DebugAgent                   Key = 94
+	DebugOpenAICallsInAgent      Key = 95
 )
 
 var keyToString = map[Key]string{
@@ -197,6 +201,10 @@ var keyToString = map[Key]string{
 	EmailToolFromAddress:         "smtp from address",
 	DebugAutomation:              "debug automation",
 	DebugOpenAICallsInAutomation: "debug open ai calls in automation",
+	AgentData:                    "agent data",
+	AgentID:                      "agent id",
+	DebugAgent:                   "debug agent",
+	DebugOpenAICallsInAgent:      "debug open ai calls in agent",
 }
 
 func (k Key) String() string {
@@ -299,6 +307,10 @@ var keyMap = map[Key]string{
 	EmailToolFromAddress:         "89",
 	DebugAutomation:              "90",
 	DebugOpenAICallsInAutomation: "91",
+	AgentData:                    "92",
+	AgentID:                      "93",
+	DebugAgent:                   "94",
+	DebugOpenAICallsInAgent:      "95",
 }
 
 func (k Key) Key() (string, error) {

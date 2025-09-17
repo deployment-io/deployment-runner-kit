@@ -27,6 +27,7 @@ const (
 	DeleteAwsRdsDatabase                     Type = 22
 	BuildNixPacksImage                       Type = 23
 	RunNewAutomation                         Type = 24
+	RunNewAgent                              Type = 25
 )
 
 var typeToString = map[Type]string{
@@ -54,6 +55,7 @@ var typeToString = map[Type]string{
 	DeleteAwsRdsDatabase:                     "Delete AWS RDS Database",
 	BuildNixPacksImage:                       "Build NixPacks Image",
 	RunNewAutomation:                         "Run New Automation",
+	RunNewAgent:                              "Run New Agent",
 }
 
 func (t Type) String() string {

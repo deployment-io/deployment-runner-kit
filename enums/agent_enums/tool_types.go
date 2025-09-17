@@ -1,4 +1,4 @@
-package automation_enums
+package agent_enums
 
 import "fmt"
 
@@ -16,10 +16,10 @@ const (
 
 // Add the following maps and String method below
 var toolTypeToStringMap = map[ToolType]string{
-	GetCPUMemoryUsage:  "GetCPUMemoryUsage",
-	SendEmail:          "Email",
-	GetApplicationLogs: "GetApplicationLogs",
-	QueryCode:          "QueryCode",
+	GetCPUMemoryUsage:  "Get CPU and Memory Usage",
+	SendEmail:          "Send an email to a specified email address",
+	GetApplicationLogs: "Get Application Logs",
+	QueryCode:          "Query Code",
 }
 
 // String returns the string representation of the tool type
@@ -28,28 +28,6 @@ func (t ToolType) String() string {
 		return str
 	}
 	return "Unknown ToolType"
-}
-
-var toolTypeToEntities = map[ToolType][]Entity{
-	GetCPUMemoryUsage: {
-		WebService,
-		PrivateService,
-	},
-	GetApplicationLogs: {
-		WebService,
-		PrivateService,
-	},
-	QueryCode: {
-		StaticSite,
-		WebService,
-		PrivateService,
-		Repository,
-	},
-}
-
-// GetEntities returns the entities that can run this tool type
-func (t ToolType) GetEntities() []Entity {
-	return toolTypeToEntities[t]
 }
 
 func GetToolTypeFromNodeType(nodeType NodeType) (ToolType, error) {
