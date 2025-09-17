@@ -3,6 +3,8 @@ package jobs
 import (
 	"encoding/gob"
 	"fmt"
+
+	"github.com/deployment-io/deployment-runner-kit/agents"
 	"github.com/deployment-io/deployment-runner-kit/automations"
 	"github.com/deployment-io/deployment-runner-kit/enums/parameters_enums"
 	"github.com/deployment-io/deployment-runner-kit/enums/region_enums"
@@ -18,7 +20,7 @@ type ContextV1 struct {
 
 type ParameterType interface {
 	int | int64 | string | map[string]string | primitive.A | primitive.D | []string | map[string]interface{} |
-		[][]string | bool | automations.AutomationDataDtoV1
+		[][]string | bool | automations.AutomationDataDtoV1 | agents.AgentDataDtoV1
 }
 
 func RegisterGobDataTypes() {
@@ -30,6 +32,7 @@ func RegisterGobDataTypes() {
 	gob.Register([][]string{{}})
 	gob.Register(false)
 	gob.Register(automations.AutomationDataDtoV1{})
+	gob.Register(agents.AgentDataDtoV1{})
 }
 
 func GetParameterValue[T ParameterType](parameters map[string]interface{}, k parameters_enums.Key) (T, error) {

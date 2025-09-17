@@ -1,4 +1,4 @@
-package automation_enums
+package agent_enums
 
 type Entity uint
 

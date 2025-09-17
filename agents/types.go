@@ -1,4 +1,4 @@
-package automations
+package agents
 
 import (
 	"github.com/deployment-io/deployment-runner-kit/enums/agent_enums"
@@ -25,19 +25,16 @@ type MessageDataDtoV1 struct {
 	Type    message_enums.Type
 }
 
-type AutomationDataDtoV1 struct {
-	ID                     string
-	Name                   string
-	Goal                   string
-	StartNodeID            string
-	Entity                 agent_enums.Entity
-	NodesMap               map[string]NodeDtoV1
-	ChatHistory            []MessageDataDtoV1
-	LlmModelType           llm_enums.ModelType
-	LlmApiVersion          llm_enums.ApiVersion
-	LlmCodeQueryModelType  llm_enums.ModelType
-	LlmCodeQueryApiVersion llm_enums.ApiVersion
-	OpenAIAPIKey           string
-	OpenAIBaseUrl          string
-	ExtraHelpAvailable     bool
+type AgentDataDtoV1 struct {
+	ID                 string
+	Name               string
+	Goal               string
+	StartNodeID        string
+	NodesMap           map[string]NodeDtoV1
+	ChatHistory        []MessageDataDtoV1
+	LlmModelType       llm_enums.ModelType
+	LlmApiVersion      llm_enums.ApiVersion
+	OpenAIAPIKey       string
+	OpenAIBaseUrl      string
+	ExtraHelpAvailable bool
 }
