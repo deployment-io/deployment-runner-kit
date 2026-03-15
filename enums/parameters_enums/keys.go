@@ -107,6 +107,7 @@ const (
 	AgentID                      Key = 93
 	DebugAgent                   Key = 94
 	DebugOpenAICallsInAgent      Key = 95
+	IsSpa                        Key = 96
 )
 
 var keyToString = map[Key]string{
@@ -205,6 +206,7 @@ var keyToString = map[Key]string{
 	AgentID:                      "agent id",
 	DebugAgent:                   "debug agent",
 	DebugOpenAICallsInAgent:      "debug open ai calls in agent",
+	IsSpa:                        "is spa",
 }
 
 func (k Key) String() string {
@@ -311,6 +313,7 @@ var keyMap = map[Key]string{
 	AgentID:                      "93",
 	DebugAgent:                   "94",
 	DebugOpenAICallsInAgent:      "95",
+	IsSpa:                        "96",
 }
 
 func (k Key) Key() (string, error) {
