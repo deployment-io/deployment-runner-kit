@@ -5,7 +5,7 @@ import "github.com/deployment-io/deployment-runner-kit/types"
 type CompletingJobDtoV1 struct {
 	Error  string
 	ID     string
-	Output map[string]interface{}
+	Output string
 }
 
 type CompletingJobsArgsV1 struct {
