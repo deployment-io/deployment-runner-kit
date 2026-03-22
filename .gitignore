@@ -8,3 +8,4 @@ id_rsa
 tools_build
 cover.out
 coverage.out
+.idea
