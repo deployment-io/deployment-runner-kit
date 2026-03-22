@@ -3,8 +3,9 @@ package jobs
 import "github.com/deployment-io/deployment-runner-kit/types"
 
 type CompletingJobDtoV1 struct {
-	Error string
-	ID    string
+	Error  string
+	ID     string
+	Output map[string]interface{}
 }
 
 type CompletingJobsArgsV1 struct {

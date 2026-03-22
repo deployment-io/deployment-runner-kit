@@ -108,6 +108,10 @@ const (
 	DebugAgent                   Key = 94
 	DebugOpenAICallsInAgent      Key = 95
 	IsSpa                        Key = 96
+	StartTime                    Key = 97
+	EndTime                      Key = 98
+	SearchPattern                Key = 99
+	JobOutput                    Key = 100 //string - JSON-encoded structured output from job commands
 )
 
 var keyToString = map[Key]string{
@@ -207,6 +211,10 @@ var keyToString = map[Key]string{
 	DebugAgent:                   "debug agent",
 	DebugOpenAICallsInAgent:      "debug open ai calls in agent",
 	IsSpa:                        "is spa",
+	StartTime:                    "start time",
+	EndTime:                      "end time",
+	SearchPattern:                "search pattern",
+	JobOutput:                    "job output",
 }
 
 func (k Key) String() string {
@@ -314,6 +322,10 @@ var keyMap = map[Key]string{
 	DebugAgent:                   "94",
 	DebugOpenAICallsInAgent:      "95",
 	IsSpa:                        "96",
+	StartTime:                    "97",
+	EndTime:                      "98",
+	SearchPattern:                "99",
+	JobOutput:                    "100",
 }
 
 func (k Key) Key() (string, error) {

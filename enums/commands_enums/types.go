@@ -28,6 +28,7 @@ const (
 	BuildNixPacksImage                       Type = 23
 	RunNewAutomation                         Type = 24
 	RunNewAgent                              Type = 25
+	GetDeploymentLogsAws                     Type = 26
 )
 
 var typeToString = map[Type]string{
@@ -56,6 +57,7 @@ var typeToString = map[Type]string{
 	BuildNixPacksImage:                       "Build NixPacks Image",
 	RunNewAutomation:                         "Run New Automation",
 	RunNewAgent:                              "Run New Agent",
+	GetDeploymentLogsAws:                     "Get Deployment Logs from AWS CloudWatch",
 }
 
 func (t Type) String() string {
