@@ -112,6 +112,7 @@ const (
 	EndTime                      Key = 98
 	SearchPattern                Key = 99
 	JobOutput                    Key = 100 //string - JSON-encoded structured output from job commands
+	DebugGetDeploymentLogs       Key = 101
 )
 
 var keyToString = map[Key]string{
@@ -215,6 +216,7 @@ var keyToString = map[Key]string{
 	EndTime:                      "end time",
 	SearchPattern:                "search pattern",
 	JobOutput:                    "job output",
+	DebugGetDeploymentLogs:       "debug get deployment logs",
 }
 
 func (k Key) String() string {
@@ -326,6 +328,7 @@ var keyMap = map[Key]string{
 	EndTime:                      "98",
 	SearchPattern:                "99",
 	JobOutput:                    "100",
+	DebugGetDeploymentLogs:       "101",
 }
 
 func (k Key) Key() (string, error) {
