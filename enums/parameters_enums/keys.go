@@ -113,6 +113,8 @@ const (
 	SearchPattern                Key = 99
 	JobOutput                    Key = 100 //string - JSON-encoded structured output from job commands
 	DebugGetDeploymentLogs       Key = 101
+	TaskID                       Key = 102
+	StepIndex                    Key = 103 //int64 - 0-based index into Task.Steps
 )
 
 var keyToString = map[Key]string{
@@ -217,6 +219,8 @@ var keyToString = map[Key]string{
 	SearchPattern:                "search pattern",
 	JobOutput:                    "job output",
 	DebugGetDeploymentLogs:       "debug get deployment logs",
+	TaskID:                       "task id",
+	StepIndex:                    "step index",
 }
 
 func (k Key) String() string {
@@ -329,6 +333,8 @@ var keyMap = map[Key]string{
 	SearchPattern:                "99",
 	JobOutput:                    "100",
 	DebugGetDeploymentLogs:       "101",
+	TaskID:                       "102",
+	StepIndex:                    "103",
 }
 
 func (k Key) Key() (string, error) {
