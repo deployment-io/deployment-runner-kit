@@ -117,6 +117,8 @@ const (
 	StepIndex                    Key = 103 //int64 - 0-based index into Task.Steps
 	TaskBranchName               Key = 104 //string - shared Task branch name across all repos
 	Repositories                 Key = 105 //string - JSON-encoded []tasks.RepositoryEntry
+	TaskTitle                    Key = 106 //string - Task.Title; surfaced in commit message trailer
+	DashboardURL                 Key = 107 //string - dashboard base URL (e.g., https://app.deployment.io); used to construct Task-URL trailer
 )
 
 var keyToString = map[Key]string{
@@ -225,6 +227,8 @@ var keyToString = map[Key]string{
 	StepIndex:                    "step index",
 	TaskBranchName:               "task branch name",
 	Repositories:                 "repositories",
+	TaskTitle:                    "task title",
+	DashboardURL:                 "dashboard url",
 }
 
 func (k Key) String() string {
@@ -341,6 +345,8 @@ var keyMap = map[Key]string{
 	StepIndex:                    "103",
 	TaskBranchName:               "104",
 	Repositories:                 "105",
+	TaskTitle:                    "106",
+	DashboardURL:                 "107",
 }
 
 func (k Key) Key() (string, error) {
