@@ -115,6 +115,8 @@ const (
 	DebugGetDeploymentLogs       Key = 101
 	TaskID                       Key = 102
 	StepIndex                    Key = 103 //int64 - 0-based index into Task.Steps
+	TaskBranchName               Key = 104 //string - shared Task branch name across all repos
+	Repositories                 Key = 105 //string - JSON-encoded []tasks.RepositoryEntry
 )
 
 var keyToString = map[Key]string{
@@ -221,6 +223,8 @@ var keyToString = map[Key]string{
 	DebugGetDeploymentLogs:       "debug get deployment logs",
 	TaskID:                       "task id",
 	StepIndex:                    "step index",
+	TaskBranchName:               "task branch name",
+	Repositories:                 "repositories",
 }
 
 func (k Key) String() string {
@@ -335,6 +339,8 @@ var keyMap = map[Key]string{
 	DebugGetDeploymentLogs:       "101",
 	TaskID:                       "102",
 	StepIndex:                    "103",
+	TaskBranchName:               "104",
+	Repositories:                 "105",
 }
 
 func (k Key) Key() (string, error) {
