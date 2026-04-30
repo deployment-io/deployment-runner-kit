@@ -120,6 +120,13 @@ const (
 	TaskTitle                    Key = 106 //string - Task.Title; surfaced in commit message trailer
 	DashboardURL                 Key = 107 //string - dashboard base URL (e.g., https://app.deployment.io); used to construct Task-URL trailer
 	AgentEnvVars                 Key = 108 //map[string]string - decrypted env vars for agent spawn (e.g., {ANTHROPIC_API_KEY: ...}). Injected by deployment-server at Job pickup; never persisted back to MongoDB.
+	StepPrompt                   Key = 109 //string - the Step's prompt passed to agentbox via STEP_PROMPT env var
+	PreviousStepsSummary         Key = 110 //string - summary of prior Steps' agent outputs; passed via PREVIOUS_STEPS_SUMMARY. Empty for default zero-Step Tasks and for Step 0 of multi-Step Tasks.
+	Model                        Key = 111 //string - resolved model identifier (e.g., "sonnet", "opus", or pinned version)
+	MaxTurns                     Key = 112 //int64 - hard cap on agent turns within this dispatch (default 30)
+	TokenBudget                  Key = 113 //int64 - hard cap on total tokens consumed within this dispatch (0 = uncapped)
+	AgentboxImage                Key = 114 //string - the agentbox Docker image reference (e.g., "deploymenthq/agentbox:1.0.0")
+	AgentType                    Key = 115 //string - agentbox AGENT_TYPE selector ("claude-code" in v1)
 )
 
 var keyToString = map[Key]string{
@@ -231,6 +238,13 @@ var keyToString = map[Key]string{
 	TaskTitle:                    "task title",
 	DashboardURL:                 "dashboard url",
 	AgentEnvVars:                 "agent env vars",
+	StepPrompt:                   "step prompt",
+	PreviousStepsSummary:         "previous steps summary",
+	Model:                        "model",
+	MaxTurns:                     "max turns",
+	TokenBudget:                  "token budget",
+	AgentboxImage:                "agentbox image",
+	AgentType:                    "agent type",
 }
 
 func (k Key) String() string {
@@ -350,6 +364,13 @@ var keyMap = map[Key]string{
 	TaskTitle:                    "106",
 	DashboardURL:                 "107",
 	AgentEnvVars:                 "108",
+	StepPrompt:                   "109",
+	PreviousStepsSummary:         "110",
+	Model:                        "111",
+	MaxTurns:                     "112",
+	TokenBudget:                  "113",
+	AgentboxImage:                "114",
+	AgentType:                    "115",
 }
 
 func (k Key) Key() (string, error) {
