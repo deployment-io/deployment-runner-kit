@@ -119,6 +119,7 @@ const (
 	Repositories                 Key = 105 //string - JSON-encoded []tasks.RepositoryEntry
 	TaskTitle                    Key = 106 //string - Task.Title; surfaced in commit message trailer
 	DashboardURL                 Key = 107 //string - dashboard base URL (e.g., https://app.deployment.io); used to construct Task-URL trailer
+	AgentEnvVars                 Key = 108 //map[string]string - decrypted env vars for agent spawn (e.g., {ANTHROPIC_API_KEY: ...}). Injected by deployment-server at Job pickup; never persisted back to MongoDB.
 )
 
 var keyToString = map[Key]string{
@@ -229,6 +230,7 @@ var keyToString = map[Key]string{
 	Repositories:                 "repositories",
 	TaskTitle:                    "task title",
 	DashboardURL:                 "dashboard url",
+	AgentEnvVars:                 "agent env vars",
 }
 
 func (k Key) String() string {
@@ -347,6 +349,7 @@ var keyMap = map[Key]string{
 	Repositories:                 "105",
 	TaskTitle:                    "106",
 	DashboardURL:                 "107",
+	AgentEnvVars:                 "108",
 }
 
 func (k Key) Key() (string, error) {
