@@ -127,6 +127,7 @@ const (
 	TokenBudget                  Key = 113 //int64 - hard cap on total tokens consumed within this dispatch (0 = uncapped)
 	AgentboxImage                Key = 114 //string - the agentbox Docker image reference (e.g., "deploymenthq/agentbox:1.0.0")
 	AgentType                    Key = 115 //string - agentbox AGENT_TYPE selector ("claude-code" in v1)
+	AdditionalAllowedHosts       Key = 116 //string - comma-separated extra hostnames the agentbox proxy will allow (org-level + future per-Task additions; runner unions sources before passing to container)
 )
 
 var keyToString = map[Key]string{
@@ -245,6 +246,7 @@ var keyToString = map[Key]string{
 	TokenBudget:                  "token budget",
 	AgentboxImage:                "agentbox image",
 	AgentType:                    "agent type",
+	AdditionalAllowedHosts:       "additional allowed hosts",
 }
 
 func (k Key) String() string {
@@ -371,6 +373,7 @@ var keyMap = map[Key]string{
 	TokenBudget:                  "113",
 	AgentboxImage:                "114",
 	AgentType:                    "115",
+	AdditionalAllowedHosts:       "116",
 }
 
 func (k Key) Key() (string, error) {
