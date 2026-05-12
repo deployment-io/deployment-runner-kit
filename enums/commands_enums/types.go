@@ -29,6 +29,9 @@ const (
 	RunNewAutomation                         Type = 24
 	RunNewAgent                              Type = 25
 	GetDeploymentLogsAws                     Type = 26
+	RunAgentStep                             Type = 27
+	CommitAndPush                            Type = 28
+	OpenPullRequest                          Type = 29
 )
 
 var typeToString = map[Type]string{
@@ -58,6 +61,9 @@ var typeToString = map[Type]string{
 	RunNewAutomation:                         "Run New Automation",
 	RunNewAgent:                              "Run New Agent",
 	GetDeploymentLogsAws:                     "Get Deployment Logs from AWS CloudWatch",
+	RunAgentStep:                             "Run Agent Step",
+	CommitAndPush:                            "Commit and Push",
+	OpenPullRequest:                          "Open Pull Request",
 }
 
 func (t Type) String() string {
