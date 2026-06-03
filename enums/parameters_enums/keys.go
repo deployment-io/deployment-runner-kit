@@ -129,6 +129,7 @@ const (
 	AgentType                    Key = 115 //string - agentbox AGENT_TYPE selector ("claude-code" in v1)
 	AdditionalAllowedHosts       Key = 116 //string - comma-separated extra hostnames the agentbox proxy will allow (org-level + future per-Task additions; runner unions sources before passing to container)
 	ClaudeCodeVersion            Key = 117 //string - pinned @anthropic-ai/claude-code version installed inside agentbox (e.g., "2.1.141"); empty = use the agentbox image's Dockerfile-baked default
+	CodexVersion                 Key = 118 //string - pinned @openai/codex version installed inside agentbox (e.g., "0.136.0"); empty = use the agentbox image's Dockerfile-baked default
 )
 
 var keyToString = map[Key]string{
@@ -249,6 +250,7 @@ var keyToString = map[Key]string{
 	AgentType:                    "agent type",
 	AdditionalAllowedHosts:       "additional allowed hosts",
 	ClaudeCodeVersion:            "claude code version",
+	CodexVersion:                 "codex version",
 }
 
 func (k Key) String() string {
@@ -377,6 +379,7 @@ var keyMap = map[Key]string{
 	AgentType:                    "115",
 	AdditionalAllowedHosts:       "116",
 	ClaudeCodeVersion:            "117",
+	CodexVersion:                 "118",
 }
 
 func (k Key) Key() (string, error) {
