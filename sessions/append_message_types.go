@@ -16,6 +16,12 @@ type AppendMessageDtoV1 struct {
 	MessageID string // stable per assistant message; the UI coalesces deltas by it
 	Content   string // text fragment (delta) for this update
 	IsDone    bool   // marks the assistant message complete
+	// TurnEnd marks the agent's turn boundary: it finished its reply and is
+	// waiting for the next user message. Sent as its own update (no Content,
+	// IsDone=true, fresh MessageID); deployment-server records it as a
+	// message_enums.TurnEnd message so the UI can gate its composer on the
+	// boundary (ping-pong) and group a turn's messages.
+	TurnEnd bool
 }
 
 type AppendMessageArgsV1 struct {
