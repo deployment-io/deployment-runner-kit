@@ -33,6 +33,7 @@ const (
 	CommitAndPush                            Type = 28
 	OpenPullRequest                          Type = 29
 	RunAssistantSession                      Type = 30
+	BuildInfraContext                        Type = 31
 )
 
 var typeToString = map[Type]string{
@@ -66,6 +67,7 @@ var typeToString = map[Type]string{
 	CommitAndPush:                            "Commit and Push",
 	OpenPullRequest:                          "Open Pull Request",
 	RunAssistantSession:                      "Run Assistant Session",
+	BuildInfraContext:                        "Build Infra Context",
 }
 
 func (t Type) String() string {
