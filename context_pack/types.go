@@ -9,26 +9,53 @@
 package context_pack
 
 // SourceKind is the provenance of a context item. This single field lets the system absorb
-// new context types and acquisition modes as cases rather than bolt-ons.
-type SourceKind string
+// new context types and acquisition modes as cases rather than bolt-ons. Stored in the pack
+// (and thus in context_packs), so values are fixed and new kinds are appended before
+// MaxSourceKind — never renumbered.
+type SourceKind uint
 
 const (
-	Discovered SourceKind = "discovered" // runner scan, deterministic
-	Fetched    SourceKind = "fetched"    // live API snapshot (short TTL)
-	Answered   SourceKind = "answered"   // human-confirmed (durable)
-	Derived    SourceKind = "derived"    // structural extract / LLM
+	Discovered    SourceKind = iota + 1 // runner scan, deterministic
+	Fetched                             // live API snapshot (short TTL)
+	Answered                            // human-confirmed (durable)
+	Derived                             // structural extract / LLM
+	MaxSourceKind                       // always add new source kinds before MaxSourceKind
 )
+
+var sourceKindToString = map[SourceKind]string{
+	Discovered: "discovered",
+	Fetched:    "fetched",
+	Answered:   "answered",
+	Derived:    "derived",
+}
+
+func (s SourceKind) String() string {
+	return sourceKindToString[s]
+}
 
 // Confidence is the per-item correctness signal. Detection heuristics can be wrong, so
-// consumers treat low-confidence facts as "confirm live" before acting on them.
-type Confidence string
+// consumers treat low-confidence facts as "confirm live" before acting on them. Ordered
+// ascending (higher = more certain); appended before MaxConfidence, never renumbered.
+type Confidence uint
 
 const (
-	ConfidenceHigh   Confidence = "high"
-	ConfidenceMedium Confidence = "medium"
-	ConfidenceLow    Confidence = "low"
-	ConfidenceNone   Confidence = "none"
+	ConfidenceNone   Confidence = iota + 1 // could not determine
+	ConfidenceLow                          // weak heuristic
+	ConfidenceMedium                       // probable
+	ConfidenceHigh                         // human-confirmed or unambiguous
+	MaxConfidence                          // always add new levels before MaxConfidence
 )
+
+var confidenceToString = map[Confidence]string{
+	ConfidenceNone:   "none",
+	ConfidenceLow:    "low",
+	ConfidenceMedium: "medium",
+	ConfidenceHigh:   "high",
+}
+
+func (c Confidence) String() string {
+	return confidenceToString[c]
+}
 
 // ManifestEntry indexes one file in the pack. It does quadruple duty: routing (Summary),
 // freshness (SyncedTs + TtlS), correctness honesty (Confidence), and drift (Hash).
