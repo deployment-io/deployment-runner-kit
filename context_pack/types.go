@@ -8,66 +8,19 @@
 // server unmarshals it and stores it.
 package context_pack
 
-// SourceKind is the provenance of a context item. This single field lets the system absorb
-// new context types and acquisition modes as cases rather than bolt-ons. Stored in the pack
-// (and thus in context_packs), so values are fixed and new kinds are appended before
-// MaxSourceKind — never renumbered.
-type SourceKind uint
-
-const (
-	Discovered    SourceKind = iota + 1 // runner scan, deterministic
-	Fetched                             // live API snapshot (short TTL)
-	Answered                            // human-confirmed (durable)
-	Derived                             // structural extract / LLM
-	MaxSourceKind                       // always add new source kinds before MaxSourceKind
-)
-
-var sourceKindToString = map[SourceKind]string{
-	Discovered: "discovered",
-	Fetched:    "fetched",
-	Answered:   "answered",
-	Derived:    "derived",
-}
-
-func (s SourceKind) String() string {
-	return sourceKindToString[s]
-}
-
-// Confidence is the per-item correctness signal. Detection heuristics can be wrong, so
-// consumers treat low-confidence facts as "confirm live" before acting on them. Ordered
-// ascending (higher = more certain); appended before MaxConfidence, never renumbered.
-type Confidence uint
-
-const (
-	ConfidenceNone   Confidence = iota + 1 // could not determine
-	ConfidenceLow                          // weak heuristic
-	ConfidenceMedium                       // probable
-	ConfidenceHigh                         // human-confirmed or unambiguous
-	MaxConfidence                          // always add new levels before MaxConfidence
-)
-
-var confidenceToString = map[Confidence]string{
-	ConfidenceNone:   "none",
-	ConfidenceLow:    "low",
-	ConfidenceMedium: "medium",
-	ConfidenceHigh:   "high",
-}
-
-func (c Confidence) String() string {
-	return confidenceToString[c]
-}
+import "github.com/deployment-io/deployment-runner-kit/enums/context_pack_enums"
 
 // ManifestEntry indexes one file in the pack. It does quadruple duty: routing (Summary),
 // freshness (SyncedTs + TtlS), correctness honesty (Confidence), and drift (Hash).
 type ManifestEntry struct {
-	Path       string     `json:"path" bson:"path"`
-	Source     string     `json:"source" bson:"source"` // connector that produced it
-	SourceKind SourceKind `json:"sourceKind" bson:"sourceKind"`
-	Hash       string     `json:"hash" bson:"hash"` // content hash, for drift detection
-	SyncedTs   int64      `json:"syncedTs" bson:"syncedTs"`
-	TtlS       int64      `json:"ttlS" bson:"ttlS"` // per-connector TTL, seconds
-	Confidence Confidence `json:"confidence" bson:"confidence"`
-	Summary    string     `json:"summary" bson:"summary"` // one-line, redaction-clean
+	Path       string                        `json:"path" bson:"path"`
+	Source     string                        `json:"source" bson:"source"` // connector that produced it
+	SourceKind context_pack_enums.SourceKind `json:"sourceKind" bson:"sourceKind"`
+	Hash       string                        `json:"hash" bson:"hash"` // content hash, for drift detection
+	SyncedTs   int64                         `json:"syncedTs" bson:"syncedTs"`
+	TtlS       int64                         `json:"ttlS" bson:"ttlS"` // per-connector TTL, seconds
+	Confidence context_pack_enums.Confidence `json:"confidence" bson:"confidence"`
+	Summary    string                        `json:"summary" bson:"summary"` // one-line, redaction-clean
 }
 
 // Manifest is the pack index — the linchpin the agent reads first to route, and that the
