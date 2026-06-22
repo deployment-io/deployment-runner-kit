@@ -56,18 +56,18 @@ type Pack struct {
 	Artifacts []Artifact `json:"artifacts,omitempty" bson:"artifacts,omitempty"`
 }
 
-// Scope is the breadth a stored context record applies to: a level plus the id of the entity
-// at that level (an environment/cluster id; empty for Org). Records are keyed by Scope so
-// org-wide content is stored once and per-cluster content once — never duplicated per
+// Scope is the breadth a stored context record applies to: a level plus the id of the owning
+// entity — the org id for Org, an environment/cluster id otherwise. Records are keyed by Scope
+// so org-wide content is stored once and per-cluster content once — never duplicated per
 // environment.
 //
-// Level and ID are the upsert key, so they intentionally have NO omitempty: the Org scope's ID
-// is "", and omitempty would drop it from the stored doc — then the upsert filter {scope.id: ""}
-// would not match (Mongo treats an absent field as different from "") and every refresh would
-// insert a duplicate Org record.
+// The id is always a real, non-empty entity id (the Org scope's id is the org id, set on the
+// runner), so omitempty is safe and matches the codebase. And even when a key field is zero,
+// the upsert filter carries scope.level/id, so they're written into the doc on insert anyway —
+// the same reason _id can use omitempty (Mongo fills it in on insert).
 type Scope struct {
-	Level context_pack_enums.ScopeLevel `json:"level" bson:"level"`
-	ID    string                        `json:"id" bson:"id"`
+	Level context_pack_enums.ScopeLevel `json:"level,omitempty" bson:"level,omitempty"`
+	ID    string                        `json:"id,omitempty" bson:"id,omitempty"`
 }
 
 // ScopedPack is the unit a BuildInfraContext run emits and deployment-server persists: one
