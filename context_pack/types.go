@@ -63,6 +63,12 @@ type Pack struct {
 	Artifacts []Artifact `json:"artifacts,omitempty" bson:"artifacts,omitempty"`
 }
 
+// IsZero reports whether the pack carries no content, so a Pack field can be elided under bson
+// omitempty (e.g. a partial ContextPack update that doesn't touch the pack).
+func (p Pack) IsZero() bool {
+	return p.Manifest.IsZero() && len(p.Artifacts) == 0
+}
+
 // Scope is the breadth a stored context record applies to: a level plus the id of the owning
 // entity — the org id for Org, an environment/cluster id otherwise. Records are keyed by Scope
 // so org-wide content is stored once and per-cluster content once — never duplicated per
@@ -75,6 +81,12 @@ type Pack struct {
 type Scope struct {
 	Level context_pack_enums.ScopeLevel `json:"level,omitempty" bson:"level,omitempty"`
 	ID    string                        `json:"id,omitempty" bson:"id,omitempty"`
+}
+
+// IsZero reports whether the scope is empty, so a Scope field can be elided under bson
+// omitempty (e.g. a partial ContextPack update that doesn't touch the scope).
+func (s Scope) IsZero() bool {
+	return s.Level == 0 && s.ID == ""
 }
 
 // ScopedPack is the unit a BuildInfraContext run emits and deployment-server persists: one
