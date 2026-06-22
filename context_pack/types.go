@@ -49,10 +49,29 @@ type MarkdownFile struct {
 	Content string `json:"content" bson:"content"`
 }
 
-// Pack is the full output of a BuildInfraContext run: structured-canonical Artifacts indexed
-// by a Manifest, plus the derived Markdown projection.
+// Pack is one scope's slice of context: structured-canonical Artifacts indexed by a Manifest,
+// plus the derived Markdown projection. A BuildInfraContext run emits one Pack per scope (see
+// ScopedPack); the agent's /work/context/ is composed from the packs whose scope covers its
+// target.
 type Pack struct {
 	Manifest  Manifest       `json:"manifest" bson:"manifest"`
 	Artifacts []Artifact     `json:"artifacts" bson:"artifacts"`
 	Markdown  []MarkdownFile `json:"markdown" bson:"markdown"`
+}
+
+// Scope is the breadth a stored context record applies to: a level plus the id of the entity
+// at that level (an environment/cluster id; empty for Org). Records are keyed by Scope so
+// org-wide content is stored once and per-cluster content once — never duplicated per
+// environment.
+type Scope struct {
+	Level context_pack_enums.ScopeLevel `json:"level" bson:"level"`
+	ID    string                        `json:"id,omitempty" bson:"id,omitempty"`
+}
+
+// ScopedPack is the unit a BuildInfraContext run emits and deployment-server persists: one
+// scope's content, stored as a single context_packs record per (org, scope). A run produces a
+// []ScopedPack — the sources' outputs grouped by their scope.
+type ScopedPack struct {
+	Scope Scope `json:"scope" bson:"scope"`
+	Pack  Pack  `json:"pack" bson:"pack"`
 }
