@@ -34,6 +34,13 @@ type Manifest struct {
 	Gaps []string `json:"gaps,omitempty" bson:"gaps,omitempty"`
 }
 
+// IsZero reports whether the manifest carries no content, so a Pack's Manifest field can be
+// elided under bson omitempty. The bson encoder calls IsZero for struct-typed fields — the
+// same mechanism that lets primitive.ObjectID use `_id,omitempty`.
+func (m Manifest) IsZero() bool {
+	return m.PackVersion == 0 && m.BuiltTs == 0 && len(m.Files) == 0 && len(m.Gaps) == 0
+}
+
 // Artifact is one typed structured artifact (e.g. repos.json, infra-fingerprint.json) — the
 // canonical, queryable form. Data is left open (object or array) so each source owns its own
 // schema; it round-trips JSON -> server -> queryable BSON.
@@ -52,7 +59,7 @@ type Artifact struct {
 // isn't stored twice, and renderer improvements apply to old packs automatically. LLM-derived
 // narrative prose, which can't be cheaply regenerated, is stored as an Artifact instead.
 type Pack struct {
-	Manifest  Manifest   `json:"manifest" bson:"manifest"`
+	Manifest  Manifest   `json:"manifest,omitempty" bson:"manifest,omitempty"`
 	Artifacts []Artifact `json:"artifacts,omitempty" bson:"artifacts,omitempty"`
 }
 
