@@ -89,10 +89,12 @@ func (s Scope) IsZero() bool {
 	return s.Level == 0 && s.ID == ""
 }
 
-// ScopedPack is the unit a BuildInfraContext run emits and deployment-server persists: one
-// scope's content, stored as a single context_packs record per (org, scope). A run produces a
-// []ScopedPack — the sources' outputs grouped by their scope.
+// ScopedPack is the wire unit a BuildInfraContext run emits in JobOutput: one scope's content.
+// A run produces a []ScopedPack — the sources' outputs grouped by scope. It is JSON-only
+// (transport); deployment-server unpacks each into a per-(org, scope) context_packs record
+// (see the kit ContextPack model), so ScopedPack itself is never bson-marshaled — hence no
+// bson tags.
 type ScopedPack struct {
-	Scope Scope `json:"scope" bson:"scope"`
-	Pack  Pack  `json:"pack" bson:"pack"`
+	Scope Scope `json:"scope"`
+	Pack  Pack  `json:"pack"`
 }
