@@ -27,7 +27,6 @@ type ManifestEntry struct {
 // dashboard and drift-diffing read for freshness and coverage.
 type Manifest struct {
 	PackVersion int             `json:"packVersion" bson:"packVersion"`
-	Environment string          `json:"environment" bson:"environment"`
 	BuiltTs     int64           `json:"builtTs" bson:"builtTs"`
 	Files       []ManifestEntry `json:"files" bson:"files"`
 	// Gaps records what we could not see (auth can-i honesty) rather than implying
