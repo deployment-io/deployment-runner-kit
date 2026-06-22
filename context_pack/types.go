@@ -42,21 +42,18 @@ type Artifact struct {
 	Data interface{} `json:"data" bson:"data"`
 }
 
-// MarkdownFile is a derived markdown projection of the structured data — the view the agent
-// reads. Regenerable from the Artifacts; gzipped at the storage layer.
-type MarkdownFile struct {
-	Path    string `json:"path" bson:"path"`
-	Content string `json:"content" bson:"content"`
-}
-
-// Pack is one scope's slice of context: structured-canonical Artifacts indexed by a Manifest,
-// plus the derived Markdown projection. A BuildInfraContext run emits one Pack per scope (see
+// Pack is one scope's slice of context — the canonical, queryable data we persist: structured
+// Artifacts indexed by a Manifest. A BuildInfraContext run emits one Pack per scope (see
 // ScopedPack); the agent's /work/context/ is composed from the packs whose scope covers its
 // target.
+//
+// The agent-facing markdown is deliberately NOT stored here. It's a deterministic projection
+// of the Artifacts, regenerated cheaply at materialization by the renderer — so derived data
+// isn't stored twice, and renderer improvements apply to old packs automatically. LLM-derived
+// narrative prose, which can't be cheaply regenerated, is stored as an Artifact instead.
 type Pack struct {
-	Manifest  Manifest       `json:"manifest" bson:"manifest"`
-	Artifacts []Artifact     `json:"artifacts" bson:"artifacts"`
-	Markdown  []MarkdownFile `json:"markdown" bson:"markdown"`
+	Manifest  Manifest   `json:"manifest" bson:"manifest"`
+	Artifacts []Artifact `json:"artifacts" bson:"artifacts"`
 }
 
 // Scope is the breadth a stored context record applies to: a level plus the id of the entity
