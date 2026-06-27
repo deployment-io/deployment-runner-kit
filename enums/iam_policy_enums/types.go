@@ -13,6 +13,7 @@ const (
 	AwsCertificateManager
 	AwsSecretsManager
 	AwsRdsDeployment
+	AwsInfraContext
 	MaxType //always add new types before MaxType
 )
 
@@ -74,6 +75,16 @@ func (t Type) GetPolicyDataActions() ([]string, error) {
 	case AwsRdsDeployment:
 		return []string{
 			"rds:*",
+		}, nil
+	case AwsInfraContext:
+		// Read access for the infra-context connectors (Explore/Context observed layer). ecs:* for
+		// the AWS ECS source (ListClusters/ListServices/DescribeServices/DescribeTaskDefinition).
+		// Matches the codebase's service:* bundle convention and the deploy bundle's ecs:*, so it's a
+		// no-op on a runner that has already deployed (no redundant policy-propagation wait) and only
+		// self-provisions on a context-only runner that has never deployed. Add ecr:* here when image
+		// label / digest recovery (OCI org.opencontainers.image.source) lands.
+		return []string{
+			"ecs:*",
 		}, nil
 	default:
 		return nil, fmt.Errorf("error finding policy data actions")
