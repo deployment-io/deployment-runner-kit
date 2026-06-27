@@ -2,32 +2,27 @@ package context_pack
 
 import "testing"
 
-// allSources is the canonical list of source consts. Adding a source means adding it here and to
-// SourceFile — this test fails loudly if the two drift.
+// allSources is the canonical list of source consts. Names must stay unique — they key the merge
+// AND derive the on-disk filename (File), so a duplicate would both clobber the merge and collide
+// on disk.
 var allSources = []SourceName{
 	SourceRepoCatalog,
 	SourceServiceRepoMap,
 	SourceServicesObserved,
 }
 
-func TestSourceFileCompleteAndUnique(t *testing.T) {
-	// every declared source must own a file
+func TestSourceNamesUnique(t *testing.T) {
+	seen := map[SourceName]bool{}
 	for _, s := range allSources {
-		if SourceFile[s] == "" {
-			t.Errorf("source %q has no entry in SourceFile", s)
+		if seen[s] {
+			t.Errorf("duplicate source name %q", s)
 		}
+		seen[s] = true
 	}
-	// SourceFile must not contain files for sources not in allSources (catches a stale entry)
-	if len(SourceFile) != len(allSources) {
-		t.Errorf("SourceFile has %d entries but allSources has %d — keep them in sync", len(SourceFile), len(allSources))
-	}
-	// no two sources may share a file — a shared filename would make the merge's artifact↔source
-	// link ambiguous
-	seen := map[string]SourceName{}
-	for s, f := range SourceFile {
-		if prev, ok := seen[f]; ok {
-			t.Errorf("file %q is claimed by two sources: %q and %q", f, prev, s)
-		}
-		seen[f] = s
+}
+
+func TestFileDerivesFromSource(t *testing.T) {
+	if got := File(SourceServicesObserved); got != "services-observed.json" {
+		t.Errorf("File(%q) = %q, want services-observed.json", SourceServicesObserved, got)
 	}
 }
