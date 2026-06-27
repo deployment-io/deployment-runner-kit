@@ -8,7 +8,7 @@ import "testing"
 var allSources = []SourceName{
 	SourceRepoCatalog,
 	SourceServiceRepoMap,
-	SourceServicesObserved,
+	SourceAwsEcs,
 }
 
 func TestSourceNamesUnique(t *testing.T) {
@@ -22,7 +22,7 @@ func TestSourceNamesUnique(t *testing.T) {
 }
 
 func TestFileDerivesFromSource(t *testing.T) {
-	if got := File(SourceServicesObserved); got != "services-observed.json" {
-		t.Errorf("File(%q) = %q, want services-observed.json", SourceServicesObserved, got)
+	if got := File(SourceAwsEcs); got != "aws-ecs.json" {
+		t.Errorf("File(%q) = %q, want aws-ecs.json", SourceAwsEcs, got)
 	}
 }
