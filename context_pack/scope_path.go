@@ -13,10 +13,9 @@ import (
 //
 // It is the single rule materialize applies to EVERY pack — not per-source plumbing:
 //
-//	Org         -> ""                       (root; materialize is per-org, so an org segment is redundant)
-//	Environment -> "environments/<id>"
-//	Cluster     -> "clusters/<id>"
-//	(other)     -> "scopes/<id>"            (safety net: a new level still namespaces, never collides)
+//	Org      -> ""              (root; materialize is per-org, so an org segment is redundant)
+//	Cluster  -> "clusters/<id>"
+//	(other)  -> "scopes/<id>"   (safety net: a new level still namespaces, never collides)
 //
 // <id> is sanitizeID(scope.ID) — a cloud-neutral form of the raw scope ID (an AWS ARN, a GCP
 // project/cluster path, …), so it's unique + deterministic on any cloud without per-cloud parsing.
@@ -29,8 +28,6 @@ func ScopePath(scope Scope) string {
 	switch scope.Level {
 	case context_pack_enums.Org:
 		return ""
-	case context_pack_enums.Environment:
-		return "environments/" + sanitizeID(scope.ID)
 	case context_pack_enums.Cluster:
 		return "clusters/" + sanitizeID(scope.ID)
 	default:
