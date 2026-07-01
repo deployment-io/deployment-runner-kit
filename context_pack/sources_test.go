@@ -9,6 +9,7 @@ var allSources = []SourceName{
 	SourceRepoCatalog,
 	SourceServiceRepoMap,
 	SourceAwsEcs,
+	SourceAnsweredServiceMap,
 }
 
 func TestSourceNamesUnique(t *testing.T) {
