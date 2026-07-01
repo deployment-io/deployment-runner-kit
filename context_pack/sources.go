@@ -31,6 +31,11 @@ const (
 	// SourceAwsEcs — service↔repo OBSERVED from live AWS ECS. Cluster scope, Discovered. Sibling cloud
 	// connectors follow the cloud+service convention (gcp-cloudrun, azure-containerapps, …).
 	SourceAwsEcs SourceName = "aws-ecs"
+	// SourceAnsweredServiceMap — service↔repo CONFIRMED by a human in the dashboard: the durable
+	// "answered" layer. Org scope, Answered (SourceKind). Wins reconciliation over declared/observed
+	// and survives re-scans; app-server writes it when a user confirms or corrects an observed
+	// service's repo.
+	SourceAnsweredServiceMap SourceName = "answered-service-map"
 )
 
 // File is the on-disk filename a source's artifact uses: the source name + ".json". Deriving it
