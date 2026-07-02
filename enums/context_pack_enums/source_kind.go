@@ -7,7 +7,7 @@ package context_pack_enums
 type SourceKind uint
 
 const (
-	Discovered    SourceKind = iota + 1 // runner scan, deterministic
+	Observed      SourceKind = iota + 1 // runner scan / enumeration, deterministic
 	Fetched                             // live API snapshot (short TTL)
 	Answered                            // human-confirmed (durable)
 	Derived                             // structural extract / LLM
@@ -15,10 +15,10 @@ const (
 )
 
 var sourceKindToString = map[SourceKind]string{
-	Discovered: "discovered",
-	Fetched:    "fetched",
-	Answered:   "answered",
-	Derived:    "derived",
+	Observed: "observed",
+	Fetched:  "fetched",
+	Answered: "answered",
+	Derived:  "derived",
 }
 
 func (s SourceKind) String() string {
