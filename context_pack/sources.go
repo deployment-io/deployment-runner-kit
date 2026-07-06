@@ -36,6 +36,13 @@ const (
 	// and survives re-scans; app-server writes it when a user confirms or corrects an observed
 	// service's repo.
 	SourceAnsweredServiceMap SourceName = "answered-service-map"
+	// SourceManagedDeployments — deployment.io's OWN managed deployments for the org, fetched from our
+	// system of record (the deployments collection). Org scope, Fetched (SourceKind). Grounds the agent
+	// on what deployment.io already runs, and is the authoritative layer reconciliation uses to
+	// RECOGNIZE an observed ECS service as already-managed — joining Deployment.EcsServiceArn ↔ the
+	// observed service's arn, then enriching to the real name/repo/environment instead of a
+	// rediscovered image-name row. Written server-side by app-server (it holds the Deployment records).
+	SourceManagedDeployments SourceName = "managed-deployments"
 )
 
 // File is the on-disk filename a source's artifact uses: the source name + ".json". Deriving it
