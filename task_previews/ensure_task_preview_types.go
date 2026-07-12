@@ -37,9 +37,12 @@ type EnsureTaskPreviewArgsV1 struct {
 	GoArch         string // runtime.GOARCH
 	GoOS           string // runtime.GOOS
 
-	// ServiceName identifies this service within the task's preview env (a task can
-	// preview a full stack — static + web + db — each its own Deployment under the
-	// one env). Must be unique per task; used to name/find the Deployment.
+	// ServiceName identifies this service within the task's preview env. The Deployment
+	// identity is the (TaskID, ServiceName, ServiceType) tuple: EnsureV1 find-or-creates
+	// by it, so repeated calls with the same tuple reuse the same Deployment (idempotent
+	// redeploy), while distinct services in one task must use distinct ServiceNames. This
+	// is a caller contract — NOT enforced server-side. A task can preview a full stack
+	// (static + web + db), each its own Deployment under the one env.
 	ServiceName string
 	// ServiceType is one of the ServiceType* tokens above.
 	ServiceType string
@@ -54,4 +57,5 @@ type EnsureTaskPreviewArgsV1 struct {
 type EnsureTaskPreviewReplyV1 struct {
 	PreviewID      string
 	ExistingDistID string
+	ExistingDomain string // persisted CloudFront domain, for the reuse-path URL (empty on first deploy)
 }
