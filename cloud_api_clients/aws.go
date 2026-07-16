@@ -256,6 +256,21 @@ func GetSecretsManagerClient(parameters map[string]interface{}) (*secretsmanager
 	return secretsManagerClient, nil
 }
 
+// GetSecretsManagerClientFromRegion builds a Secrets Manager client for an
+// explicit region, for callers (e.g. the Tasks agent runner) that have the
+// runner's region directly rather than a job's Region parameter.
+func GetSecretsManagerClientFromRegion(region string) (*secretsmanager.Client, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	secretsManagerClient := secretsmanager.NewFromConfig(cfg, func(options *secretsmanager.Options) {
+		options.Region = region
+	})
+
+	return secretsManagerClient, nil
+}
+
 func GetServiceDiscoveryClient(parameters map[string]interface{}) (*servicediscovery.Client, error) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
