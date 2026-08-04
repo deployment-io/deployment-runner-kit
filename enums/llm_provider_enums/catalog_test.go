@@ -101,6 +101,7 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		Gpt55:          "gpt-5.5",
 		Gpt53Codex:     "gpt-5.3-codex",
 		Gpt54:          "gpt-5.4",
+		NovaPro:        "nova-pro",
 	}
 	for m, want := range cases {
 		if got := m.String(); got != want {
@@ -215,6 +216,38 @@ func TestCatalog_TheWorkedExample(t *testing.T) {
 		if p == AnthropicSubscription {
 			t.Error("opencode must not be offered AnthropicSubscription")
 		}
+	}
+}
+
+func TestCatalog_NovaIsBedrockOnlyAndOpencodeOnly(t *testing.T) {
+	// Nova is the first model that exercises the axes rather than riding on
+	// the old claude-code/codex symmetry, so its shape is worth pinning.
+
+	// Bedrock-only: Amazon offers no direct API for Nova, so its single
+	// provider is a cloud ROUTE rather than its vendor. That distinction is
+	// exactly why Vendor hangs off Model and not Provider.
+	got := NovaPro.Providers()
+	if len(got) != 1 || got[0] != AWSBedrock {
+		t.Errorf("NovaPro.Providers() = %v, want exactly [AWSBedrock]", got)
+	}
+	if NovaPro.Vendor() != VendorAmazon {
+		t.Errorf("NovaPro.Vendor() = %v, want VendorAmazon", NovaPro.Vendor())
+	}
+
+	// Only opencode can run it — claude-code speaks the Anthropic API and
+	// codex is OpenAI-only, so neither can drive a Nova model however it is
+	// reached.
+	harnesses := HarnessesFor(NovaPro)
+	if len(harnesses) != 1 || harnesses[0] != Opencode {
+		t.Errorf("HarnessesFor(NovaPro) = %v, want exactly [Opencode]", harnesses)
+	}
+	if ClaudeCode.Supports(NovaPro) || Codex.Supports(NovaPro) {
+		t.Error("neither claude-code nor codex can run a Nova model")
+	}
+
+	// And it must be resolvable through opencode, or offering it is a lie.
+	if len(ProvidersFor(Opencode, NovaPro)) == 0 {
+		t.Error("no provider can serve NovaPro through opencode")
 	}
 }
 

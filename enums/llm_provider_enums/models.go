@@ -25,6 +25,11 @@ const (
 	Gpt55
 	Gpt53Codex
 	Gpt54
+	// NovaPro is Amazon's own model and the first entry here that is
+	// Bedrock-ONLY — there is no direct API for it. It is also the first
+	// non-Anthropic, non-OpenAI model, which is what the vendor axis was
+	// added for.
+	NovaPro
 
 	MaxModel // always add models before MaxModel
 )
@@ -39,6 +44,7 @@ var modelToString = map[Model]string{
 	Gpt55:          "gpt-5.5",
 	Gpt53Codex:     "gpt-5.3-codex",
 	Gpt54:          "gpt-5.4",
+	NovaPro:        "nova-pro",
 }
 
 var stringToModel = func() map[string]Model {
@@ -84,6 +90,10 @@ var modelToBedrockFamily = map[Model]string{
 	ClaudeHaiku45:  "claude-haiku-4",
 	ClaudeSonnet46: "claude-sonnet-4",
 	ClaudeOpus48:   "claude-opus-4",
+	// Matches ids like eu.amazon.nova-pro-v1:0 — no vendor segment, same as
+	// the Claude families above, since the region and vendor parts come from
+	// the profile id that discovery returns.
+	NovaPro: "nova-pro",
 }
 
 // BedrockFamily returns the Bedrock family token for a model, or "" when the
@@ -138,6 +148,7 @@ var modelToVendor = map[Model]Vendor{
 	Gpt55:          VendorOpenAI,
 	Gpt53Codex:     VendorOpenAI,
 	Gpt54:          VendorOpenAI,
+	NovaPro:        VendorAmazon,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.

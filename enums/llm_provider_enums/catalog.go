@@ -36,7 +36,7 @@ package llm_provider_enums
 var harnessToModels = map[Harness][]Model{
 	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48},
 	Codex:      {Gpt55, Gpt53Codex, Gpt54},
-	Opencode:   {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48, Gpt55},
+	Opencode:   {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48, Gpt55, NovaPro},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -52,6 +52,11 @@ var modelToProviders = map[Model][]Provider{
 	Gpt55:          {OpenAIDirect},
 	Gpt53Codex:     {OpenAIDirect},
 	Gpt54:          {OpenAIDirect},
+	// Bedrock-only: Amazon does not offer Nova through a direct API, so this
+	// is the first model whose single provider is a cloud route rather than
+	// its vendor. claude-code and codex cannot run it — harnessToModels keeps
+	// it to opencode.
+	NovaPro: {AWSBedrock},
 }
 
 // harnessToProviders lists which providers each harness can authenticate to.
