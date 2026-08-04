@@ -92,3 +92,56 @@ var modelToBedrockFamily = map[Model]string{
 func (m Model) BedrockFamily() string {
 	return modelToBedrockFamily[m]
 }
+
+// Vendor is who MAKES a model — a property of the model, never of the
+// provider serving it.
+//
+// ⚠️ This deliberately does not hang off Provider. AWSBedrock serves models
+// from Anthropic, Amazon, Google, Meta, Mistral, Qwen and others; GoogleVertex
+// serves Claude alongside Gemini. A provider is a route to a model, not a
+// statement about who built it, so asking "which vendor is AWSBedrock" has no
+// answer. An earlier revision of this package got that wrong.
+type Vendor uint
+
+const (
+	VendorUnknown Vendor = iota
+	VendorAnthropic
+	VendorOpenAI
+	VendorGoogle
+	VendorMeta
+	VendorMistral
+	VendorAmazon
+
+	MaxVendor // always add vendors before MaxVendor
+)
+
+var vendorToString = map[Vendor]string{
+	VendorAnthropic: "Anthropic",
+	VendorOpenAI:    "OpenAI",
+	VendorGoogle:    "Google",
+	VendorMeta:      "Meta",
+	VendorMistral:   "Mistral",
+	VendorAmazon:    "Amazon",
+}
+
+func (v Vendor) String() string {
+	return vendorToString[v]
+}
+
+// modelToVendor is only as long as the curated model list. Vendors beyond
+// Anthropic and OpenAI are declared above because Bedrock and opencode make
+// them reachable, not because a model here uses them yet.
+var modelToVendor = map[Model]Vendor{
+	ClaudeHaiku45:  VendorAnthropic,
+	ClaudeSonnet46: VendorAnthropic,
+	ClaudeOpus48:   VendorAnthropic,
+	Gpt55:          VendorOpenAI,
+	Gpt53Codex:     VendorOpenAI,
+	Gpt54:          VendorOpenAI,
+}
+
+// Vendor returns who makes this model, independent of how it is reached.
+// Use this for cost attribution or grouping — never Provider.
+func (m Model) Vendor() Vendor {
+	return modelToVendor[m]
+}

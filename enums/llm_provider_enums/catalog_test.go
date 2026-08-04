@@ -36,16 +36,55 @@ func TestProvider_DisplayStringsUnchangedByTheRename(t *testing.T) {
 	}
 }
 
-func TestProvider_VendorCollapsesTheAuthModeFusion(t *testing.T) {
-	// The three ways of reaching Anthropic must agree on the vendor — that is
-	// the whole point of Vendor existing alongside the fused Provider.
-	for _, p := range []Provider{AnthropicDirect, AnthropicSubscription, AWSBedrock} {
-		if got := p.Vendor(); got != VendorAnthropic {
-			t.Errorf("%s.Vendor() = %v, want VendorAnthropic", p, got)
+func TestProvider_AuthModeRecoversTheFusedAxis(t *testing.T) {
+	// Provider fuses vendor-account and auth-mode for persistence reasons;
+	// AuthMode() is how callers get the distinction back without a migration.
+	cases := map[Provider]AuthMode{
+		AnthropicDirect:       AuthAPIKey,
+		OpenAIDirect:          AuthAPIKey,
+		AWSBedrock:            AuthCloudRole,
+		GoogleVertex:          AuthCloudRole,
+		AnthropicSubscription: AuthSubscription,
+	}
+	for p, want := range cases {
+		if got := p.AuthMode(); got != want {
+			t.Errorf("%s.AuthMode() = %v, want %v", p, got, want)
 		}
 	}
-	if got := OpenAIDirect.Vendor(); got != VendorOpenAI {
-		t.Errorf("OpenAIDirect.Vendor() = %v, want VendorOpenAI", got)
+	// StoresSecret drives whether "configured" can be a key-presence check.
+	// Bedrock and subscriptions hold nothing control-plane-side, which is
+	// exactly why HasCredentials special-cases them.
+	for _, p := range []Provider{AWSBedrock, GoogleVertex, AnthropicSubscription} {
+		if p.StoresSecret() {
+			t.Errorf("%s must not report storing a control-plane secret", p)
+		}
+	}
+	if !AnthropicDirect.StoresSecret() {
+		t.Error("AnthropicDirect stores an API key control-plane-side")
+	}
+}
+
+func TestModel_VendorIsAModelPropertyNotAProviderOne(t *testing.T) {
+	// Regression guard for a real conceptual error in an earlier revision,
+	// which hung Vendor off Provider and mapped AWSBedrock -> Anthropic.
+	// Bedrock serves Anthropic, Amazon, Google, Meta, Mistral and Qwen models;
+	// Vertex serves Claude as well as Gemini. A provider is a ROUTE to a model,
+	// so it has no vendor of its own.
+	if got := ClaudeOpus48.Vendor(); got != VendorAnthropic {
+		t.Errorf("ClaudeOpus48.Vendor() = %v, want VendorAnthropic", got)
+	}
+	if got := Gpt55.Vendor(); got != VendorOpenAI {
+		t.Errorf("Gpt55.Vendor() = %v, want VendorOpenAI", got)
+	}
+	// The same model keeps its vendor whichever provider serves it — the
+	// property the earlier design could not express.
+	for _, p := range ClaudeOpus48.Providers() {
+		_ = p // vendor is asked of the model, never of p
+	}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		if m.Vendor() == VendorUnknown {
+			t.Errorf("model %s has no vendor", m)
+		}
 	}
 }
 

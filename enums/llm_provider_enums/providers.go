@@ -83,42 +83,60 @@ func (p Provider) IsValid() bool {
 	return p > 0 && p < MaxProvider
 }
 
-// Vendor returns the underlying vendor for a provider, collapsing the
-// auth-mode distinction that Provider fuses. AnthropicDirect,
-// AnthropicSubscription and AWSBedrock all resolve to Anthropic models, so
-// anything reasoning about "whose model is this" (cost attribution, model
-// availability) wants this rather than the raw provider.
-func (p Provider) Vendor() Vendor {
+// AuthMode returns HOW this provider is authenticated to.
+//
+// This recovers the axis PLAN_provider_centric_llm_keys.md §2 wanted split out
+// of Provider — without renumbering anything. Auth mode is DERIVED from the
+// provider rather than stored beside it, so the persisted values above stay
+// untouched while callers that genuinely need the distinction (which fields a
+// settings card renders, whether a credential is stored at all) can still ask.
+//
+// Deliberately NOT a stored field: a provider fully determines its auth mode,
+// so persisting both would create a pair that can disagree.
+func (p Provider) AuthMode() AuthMode {
 	switch p {
-	case AnthropicDirect, AnthropicSubscription, AWSBedrock:
-		return VendorAnthropic
-	case OpenAIDirect:
-		return VendorOpenAI
-	case GoogleVertex:
-		return VendorGoogle
+	case AnthropicDirect, OpenAIDirect:
+		return AuthAPIKey
+	case AWSBedrock, GoogleVertex:
+		return AuthCloudRole
+	case AnthropicSubscription:
+		return AuthSubscription
 	}
-	return VendorUnknown
+	return AuthUnknown
 }
 
-// Vendor is who actually makes the model, independent of how it is reached.
-// Not persisted — derived from Provider.
-type Vendor uint
+// AuthMode is how a provider is authenticated to — the axis fused into
+// Provider for persistence reasons, recoverable via Provider.AuthMode().
+type AuthMode uint
 
 const (
-	VendorUnknown Vendor = iota
-	VendorAnthropic
-	VendorOpenAI
-	VendorGoogle
+	AuthUnknown AuthMode = iota
+	// AuthAPIKey — a secret held control-plane-side, encrypted at rest.
+	AuthAPIKey
+	// AuthCloudRole — no stored secret at all; the runner assumes a role in the
+	// customer's own cloud and vends short-lived credentials at spawn.
+	AuthCloudRole
+	// AuthSubscription — an OAuth token held in the CUSTOMER's secret store and
+	// read runner-side, never transiting the control plane.
+	AuthSubscription
 
-	MaxVendor
+	MaxAuthMode
 )
 
-var vendorToString = map[Vendor]string{
-	VendorAnthropic: "Anthropic",
-	VendorOpenAI:    "OpenAI",
-	VendorGoogle:    "Google",
+var authModeToString = map[AuthMode]string{
+	AuthAPIKey:       "API key",
+	AuthCloudRole:    "Cloud IAM role",
+	AuthSubscription: "Subscription",
 }
 
-func (v Vendor) String() string {
-	return vendorToString[v]
+func (a AuthMode) String() string {
+	return authModeToString[a]
+}
+
+// StoresSecret reports whether configuring this provider means holding a
+// credential control-plane-side. False for Bedrock/Vertex (role-assumed) and
+// for subscriptions (token lives in the customer's own secret store), which is
+// why "configured" cannot be a key-presence check for those.
+func (p Provider) StoresSecret() bool {
+	return p.AuthMode() == AuthAPIKey
 }
