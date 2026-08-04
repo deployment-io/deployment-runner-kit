@@ -1,0 +1,134 @@
+package llm_provider_enums
+
+// The catalogue: which (harness, model, provider) combinations are real.
+//
+// Held as THREE FLAT TABLES rather than one nested map[Harness]map[Model][]Provider,
+// because each table states an independently true fact and a valid combination
+// is their intersection:
+//
+//	harnessToModels    — claude-code cannot run gpt-5.5 whoever serves it
+//	modelToProviders   — Opus 4.8 is served by Anthropic and Bedrock, not OpenAI
+//	harnessToProviders — codex only ever talks to OpenAI
+//
+// A nested map would restate the same facts once per combination and drift
+// between rows. Worked example, and the question this package was built to
+// answer: "claude-code supports Opus 4.8, which could come from Anthropic
+// Direct or AWS Bedrock" —
+//
+//	ProvidersFor(ClaudeCode, ClaudeOpus48)
+//	  = modelToProviders[ClaudeOpus48]   // Direct, Subscription, Bedrock
+//	  ∩ harnessToProviders[ClaudeCode]   // Direct, Subscription, Bedrock, Vertex
+//	  = Direct, Subscription, Bedrock
+//
+// This is a STATIC LOOKUP TABLE, not state. Nothing here is persisted; it
+// says what is *possible*, never what a given org has configured. Whether an
+// org can actually use a provider is a separate question answered by its
+// credentials — and for Bedrock, by per-runner readiness.
+
+// harnessToModels lists the models each harness can run.
+//
+// opencode's entries are the same logical models as the others: the
+// "anthropic/" and "openai/" prefixes its CLI wants are a rendering of
+// (model, provider) at spawn, not part of the model's identity. That is the
+// point of keeping Model logical — see PLAN_provider_centric_llm_keys.md §3.3
+// and §4.1, where the prefix's second job (disambiguating the harness) is what
+// made stripping it dangerous until Harness became explicit.
+var harnessToModels = map[Harness][]Model{
+	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48},
+	Codex:      {Gpt55, Gpt53Codex, Gpt54},
+	Opencode:   {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48, Gpt55},
+}
+
+// modelToProviders lists which providers can serve each model.
+//
+// AnthropicSubscription appears on the Claude models because the subscription
+// genuinely serves them — the restriction that only claude-code may use it is
+// a HARNESS constraint, expressed in harnessToProviders, not a model one.
+// Keeping those separate is what lets the intersection stay correct.
+var modelToProviders = map[Model][]Provider{
+	ClaudeHaiku45:  {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeSonnet46: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeOpus48:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	Gpt55:          {OpenAIDirect},
+	Gpt53Codex:     {OpenAIDirect},
+	Gpt54:          {OpenAIDirect},
+}
+
+// harnessToProviders lists which providers each harness can authenticate to.
+//
+// The two constraints worth knowing, both enforced in deployment-runner today
+// and previously only discoverable by reading it:
+//
+//   - Codex is OpenAI-only. It has no Bedrock path at all.
+//   - Only claude-code may use AnthropicSubscription. maybeApplyClaudeSubscriptionAuth
+//     returns early for any other AGENT_TYPE, because a genuine `claude` CLI is
+//     what passes Anthropic's client-identity check; routing a subscription
+//     token through another agent is prohibited, not merely unsupported.
+//
+// GoogleVertex is listed for claude-code because the harness supports it, even
+// though no model above is served by it yet — the intersection keeps that from
+// ever being offered.
+var harnessToProviders = map[Harness][]Provider{
+	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock, GoogleVertex},
+	Codex:      {OpenAIDirect},
+	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
+}
+
+// Models returns the models this harness can run.
+func (h Harness) Models() []Model { return harnessToModels[h] }
+
+// Providers returns the providers this harness can authenticate to.
+func (h Harness) Providers() []Provider { return harnessToProviders[h] }
+
+// Providers returns every provider that can serve this model, ignoring which
+// harness is asking. Use ProvidersFor when a harness is known.
+func (m Model) Providers() []Provider { return modelToProviders[m] }
+
+// Supports reports whether the harness can run the model at all.
+func (h Harness) Supports(m Model) bool {
+	for _, candidate := range harnessToModels[h] {
+		if candidate == m {
+			return true
+		}
+	}
+	return false
+}
+
+// ProvidersFor returns the providers that can serve this model through this
+// harness — the intersection of what serves the model and what the harness can
+// reach. Returns nil when the harness cannot run the model at all, so an empty
+// result always means "not possible", never "possible but unconfigured".
+//
+// Order follows modelToProviders so the result is deterministic; callers that
+// need a preferred provider should apply their own routing rather than relying
+// on position.
+func ProvidersFor(h Harness, m Model) []Provider {
+	if !h.Supports(m) {
+		return nil
+	}
+	reachable := make(map[Provider]bool, len(harnessToProviders[h]))
+	for _, p := range harnessToProviders[h] {
+		reachable[p] = true
+	}
+	var out []Provider
+	for _, p := range modelToProviders[m] {
+		if reachable[p] {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// HarnessesFor returns every harness able to run the model. This is the
+// inverse of harnessToModels, and is what a model-first UI needs in order to
+// offer a harness choice once a model is picked — with the first entry as the
+// sensible default.
+func HarnessesFor(m Model) []Harness {
+	var out []Harness
+	for h := ClaudeCode; h < MaxHarness; h++ {
+		if h.Supports(m) {
+			out = append(out, h)
+		}
+	}
+	return out
+}
