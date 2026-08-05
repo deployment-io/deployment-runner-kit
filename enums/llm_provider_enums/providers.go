@@ -140,3 +140,28 @@ func (a AuthMode) String() string {
 func (p Provider) StoresSecret() bool {
 	return p.AuthMode() == AuthAPIKey
 }
+
+// ResolvesModelIDAtRuntime reports whether this provider's concrete model ids
+// must be DISCOVERED rather than declared.
+//
+// This exists so callers branch on the PROPERTY rather than on a provider's
+// name. `if p == AWSBedrock` reads fine with one such provider and rots as
+// soon as there are two — Vertex has the same shape, and a hardcoded check
+// would have to be found and updated in every caller.
+//
+// Bedrock is the worked example: an id like eu.amazon.nova-pro-v1:0 carries a
+// region prefix, a date and a revision that vary per region and per account,
+// so only the version-pinned prefix can live in code (Model.BedrockProfilePrefix)
+// and the rest comes from bedrock:ListInferenceProfiles at spawn.
+//
+// Deliberately NOT derived from AuthMode. Both providers here happen to be
+// AuthCloudRole today, but how you authenticate and whether model ids are
+// discoverable are independent questions — a cloud-role provider could
+// perfectly well publish static ids.
+func (p Provider) ResolvesModelIDAtRuntime() bool {
+	switch p {
+	case AWSBedrock, GoogleVertex:
+		return true
+	}
+	return false
+}

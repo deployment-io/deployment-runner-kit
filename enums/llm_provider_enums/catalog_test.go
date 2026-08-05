@@ -378,3 +378,53 @@ func TestOpencodeProviderNamesCoverEveryReachableProvider(t *testing.T) {
 		}
 	}
 }
+
+func TestIDFor_DefaultsToTheLogicalID(t *testing.T) {
+	// The override map is empty on purpose, so every model currently reports
+	// its logical id at every provider. This pins the FALLBACK, which is the
+	// behaviour that matters when no override exists.
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		for _, p := range m.Providers() {
+			if got := m.IDFor(p); got != m.String() {
+				t.Errorf("IDFor(%s, %s) = %q, want the logical id %q", m, p, got, m)
+			}
+		}
+	}
+}
+
+func TestResolvesModelIDAtRuntime_IsAPropertyNotAProviderCheck(t *testing.T) {
+	// Callers branch on this rather than on a provider's name, so that adding
+	// Vertex does not mean hunting down every `if p == AWSBedrock`.
+	runtime := map[Provider]bool{
+		AWSBedrock:   true,
+		GoogleVertex: true,
+	}
+	for p := AnthropicDirect; p < MaxProvider; p++ {
+		if got := p.ResolvesModelIDAtRuntime(); got != runtime[p] {
+			t.Errorf("%s.ResolvesModelIDAtRuntime() = %v, want %v", p, got, runtime[p])
+		}
+	}
+	// A key-based provider declares its ids; nothing to discover.
+	for _, p := range []Provider{AnthropicDirect, OpenAIDirect, AnthropicSubscription} {
+		if p.ResolvesModelIDAtRuntime() {
+			t.Errorf("%s declares its model ids; it must not require discovery", p)
+		}
+	}
+}
+
+func TestRuntimeResolvedProvidersHaveDiscoveryInput(t *testing.T) {
+	// A provider that resolves ids at runtime needs something to match on. For
+	// Bedrock that is the version-pinned profile prefix — without it discovery
+	// has nothing to search for and the logical id reaches the API verbatim,
+	// which is exactly how the first live run failed.
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		for _, p := range m.Providers() {
+			if !p.ResolvesModelIDAtRuntime() {
+				continue
+			}
+			if p == AWSBedrock && m.BedrockProfilePrefix() == "" {
+				t.Errorf("%s is served by %s, which resolves ids at runtime, but it has no profile prefix to discover with", m, p)
+			}
+		}
+	}
+}

@@ -168,3 +168,32 @@ var modelToVendor = map[Model]Vendor{
 func (m Model) Vendor() Vendor {
 	return modelToVendor[m]
 }
+
+// modelProviderID overrides the id used at a specific provider, for models
+// whose provider-side name differs from our logical one.
+//
+// DELIBERATELY EMPTY. No divergence is currently KNOWN — but that is
+// unverified rather than established, which is the reason this seam exists at
+// all. Our ids are ours: opencode resolves models through its own registry
+// (models.dev), and that registry need not agree with either our names or the
+// vendor API's. Populate an entry the moment a real run shows a mismatch;
+// guessing now would bake in a second unverified assumption.
+//
+// Not for providers that resolve ids at runtime — see
+// Provider.ResolvesModelIDAtRuntime.
+var modelProviderID = map[Model]map[Provider]string{}
+
+// IDFor returns the model id to use at a given provider: an override when the
+// provider names the model differently, otherwise our logical id.
+//
+// Only meaningful for providers that DECLARE their ids. Where
+// Provider.ResolvesModelIDAtRuntime is true the concrete id is discovered and
+// this value is at best a starting point.
+func (m Model) IDFor(p Provider) string {
+	if byProvider, ok := modelProviderID[m]; ok {
+		if id, ok := byProvider[p]; ok {
+			return id
+		}
+	}
+	return m.String()
+}
