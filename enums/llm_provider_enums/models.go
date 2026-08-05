@@ -25,11 +25,11 @@ const (
 	Gpt55
 	Gpt53Codex
 	Gpt54
-	// NovaPro is Amazon's own model and the first entry here that is
+	// NovaProV1 is Amazon's own model and the first entry here that is
 	// Bedrock-ONLY — there is no direct API for it. It is also the first
 	// non-Anthropic, non-OpenAI model, which is what the vendor axis was
 	// added for.
-	NovaPro
+	NovaProV1
 
 	MaxModel // always add models before MaxModel
 )
@@ -44,7 +44,7 @@ var modelToString = map[Model]string{
 	Gpt55:          "gpt-5.5",
 	Gpt53Codex:     "gpt-5.3-codex",
 	Gpt54:          "gpt-5.4",
-	NovaPro:        "nova-pro",
+	NovaProV1:      "nova-pro-v1",
 }
 
 var stringToModel = func() map[string]Model {
@@ -86,21 +86,33 @@ func GetModel(s string) (Model, error) {
 // Absent entry = not available on Bedrock (the GPT models). Keep in step with
 // modelToProviders: a model listing AWSBedrock as a provider needs a family
 // here, and catalog_test.go enforces exactly that.
-var modelToBedrockFamily = map[Model]string{
-	ClaudeHaiku45:  "claude-haiku-4",
-	ClaudeSonnet46: "claude-sonnet-4",
-	ClaudeOpus48:   "claude-opus-4",
-	// Matches ids like eu.amazon.nova-pro-v1:0 — no vendor segment, same as
-	// the Claude families above, since the region and vendor parts come from
-	// the profile id that discovery returns.
-	NovaPro: "nova-pro",
+// modelToBedrockProfilePrefix maps a logical model to the VERSION-PINNED
+// prefix shared by every concrete inference profile for that exact model.
+//
+// ⚠️ IT MUST PIN THE VERSION. An earlier revision used loose family tokens —
+// "claude-sonnet-4" for claude-sonnet-4-6 — and matching is Contains(), so it
+// also matched `eu.anthropic.claude-sonnet-4-5-20250929-v1:0`. A task asking
+// for Sonnet 4.6 would have silently run Sonnet 4.5: no error, no log line,
+// resolution looking entirely successful. Only the date and revision may be
+// left to discovery, because those genuinely vary per region and account. The
+// model VERSION is not something to guess at.
+//
+// Absent entry = not available on Bedrock (the GPT models). Kept in step with
+// modelToProviders and enforced by catalog_test.go.
+var modelToBedrockProfilePrefix = map[Model]string{
+	ClaudeHaiku45:  "claude-haiku-4-5",
+	ClaudeSonnet46: "claude-sonnet-4-6",
+	ClaudeOpus48:   "claude-opus-4-8",
+	// Matches ids like eu.amazon.nova-pro-v1:0 — the vendor and region
+	// segments come from the profile id that discovery returns.
+	NovaProV1: "nova-pro-v1",
 }
 
-// BedrockFamily returns the Bedrock family token for a model, or "" when the
-// model is not served by Bedrock. The caller matches this against the ids
-// returned by bedrock:ListInferenceProfiles for its own region.
-func (m Model) BedrockFamily() string {
-	return modelToBedrockFamily[m]
+// BedrockProfilePrefix returns the version-pinned prefix for a model, or ""
+// when the model is not served by Bedrock. The caller matches this against the
+// ids returned by bedrock:ListInferenceProfiles for its own region.
+func (m Model) BedrockProfilePrefix() string {
+	return modelToBedrockProfilePrefix[m]
 }
 
 // Vendor is who MAKES a model — a property of the model, never of the
@@ -148,7 +160,7 @@ var modelToVendor = map[Model]Vendor{
 	Gpt55:          VendorOpenAI,
 	Gpt53Codex:     VendorOpenAI,
 	Gpt54:          VendorOpenAI,
-	NovaPro:        VendorAmazon,
+	NovaProV1:      VendorAmazon,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.
