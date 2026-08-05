@@ -1,6 +1,9 @@
 package llm_provider_enums
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // ---------------------------------------------------------------------------
 // Persisted-value guards. These are the ones that matter most: values 1-4 are
@@ -101,6 +104,7 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		Gpt55:          "gpt-5.5",
 		Gpt53Codex:     "gpt-5.3-codex",
 		Gpt54:          "gpt-5.4",
+		NovaProV1:      "nova-pro-v1",
 	}
 	for m, want := range cases {
 		if got := m.String(); got != want {
@@ -144,11 +148,11 @@ func TestCatalog_EveryHarnessModelPairHasAtLeastOneProvider(t *testing.T) {
 	}
 }
 
-func TestCatalog_BedrockModelsAllHaveAFamilyToken(t *testing.T) {
-	// modelToProviders claiming AWSBedrock without a family token in
-	// modelToBedrockFamily means discovery has nothing to match on, and the
-	// logical id reaches Bedrock verbatim — the exact failure the live smoke
-	// test produced ("The provided model identifier is invalid").
+func TestCatalog_BedrockModelsAllHaveAProfilePrefix(t *testing.T) {
+	// modelToProviders claiming AWSBedrock without a prefix means discovery has
+	// nothing to match on, and the logical id reaches Bedrock verbatim — the
+	// exact failure the live smoke test produced ("The provided model
+	// identifier is invalid").
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
 		onBedrock := false
 		for _, p := range m.Providers() {
@@ -156,25 +160,76 @@ func TestCatalog_BedrockModelsAllHaveAFamilyToken(t *testing.T) {
 				onBedrock = true
 			}
 		}
-		if onBedrock && m.BedrockFamily() == "" {
-			t.Errorf("model %s lists AWSBedrock as a provider but has no Bedrock family token; discovery cannot resolve it", m)
+		if onBedrock && m.BedrockProfilePrefix() == "" {
+			t.Errorf("model %s lists AWSBedrock but has no profile prefix; discovery cannot resolve it", m)
 		}
-		if !onBedrock && m.BedrockFamily() != "" {
-			t.Errorf("model %s has a Bedrock family token but does not list AWSBedrock as a provider", m)
+		if !onBedrock && m.BedrockProfilePrefix() != "" {
+			t.Errorf("model %s has a profile prefix but does not list AWSBedrock as a provider", m)
 		}
 	}
 }
 
-func TestCatalog_BedrockFamiliesAreFamiliesNotConcreteIDs(t *testing.T) {
-	// A version or revision baked in here would need a release of this module
-	// plus a bump in four repos per Bedrock model launch, and would fail at task
-	// time in between. Concrete ids carry dots and colons; families must not.
+// ---------------------------------------------------------------------------
+// THE RULE FOR ADDING A MODEL: every entry carries a version, and every entry
+// is unique — as a wire id and as a Bedrock profile prefix.
+//
+// This is not tidiness. Matching against inference profiles is Contains(), so
+// an id or prefix that does not pin a version can match a NEIGHBOURING
+// version's profile and silently run the wrong model: no error, no log line,
+// resolution looking entirely successful.
+// ---------------------------------------------------------------------------
+
+func TestCatalog_EveryModelIdCarriesAVersion(t *testing.T) {
+	// A digit is the enforceable proxy for "has a version": claude-opus-4-8,
+	// gpt-5.5, nova-pro-v1 all qualify; a bare "nova-pro" does not. The first
+	// draft of the Nova entry was exactly that, and would have matched any
+	// future Nova Pro v2 profile the moment AWS published one.
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
-		f := m.BedrockFamily()
-		for _, bad := range []string{".", ":"} {
-			if f != "" && contains(f, bad) {
-				t.Errorf("Bedrock family %q for %s looks like a concrete profile id; it must be a family token only", f, m)
-			}
+		if !strings.ContainsAny(m.String(), "0123456789") {
+			t.Errorf("model id %q carries no version; a versionless id can match a future version's profile", m)
+		}
+	}
+}
+
+func TestCatalog_ModelIdsAndPrefixesAreUnique(t *testing.T) {
+	ids := map[string]Model{}
+	prefixes := map[string]Model{}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		if prev, dup := ids[m.String()]; dup {
+			t.Errorf("wire id %q is used by both %d and %d", m.String(), uint(prev), uint(m))
+		}
+		ids[m.String()] = m
+
+		p := m.BedrockProfilePrefix()
+		if p == "" {
+			continue
+		}
+		if prev, dup := prefixes[p]; dup {
+			t.Errorf("Bedrock prefix %q is shared by %s and %s; both would resolve to the same profile", p, prev, m)
+		}
+		prefixes[p] = m
+	}
+}
+
+func TestCatalog_BedrockPrefixPinsTheModelVersion(t *testing.T) {
+	// The prefix must pin the same model AND version the wire id names, leaving
+	// only the date and revision to discovery — those genuinely vary per region
+	// and account.
+	//
+	// Regression guard for a real bug: claude-sonnet-4-6 carried the prefix
+	// "claude-sonnet-4", which Contains-matches
+	// eu.anthropic.claude-sonnet-4-5-20250929-v1:0. A Sonnet 4.6 task would
+	// have silently run Sonnet 4.5.
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		p := m.BedrockProfilePrefix()
+		if p == "" {
+			continue
+		}
+		if p != m.String() {
+			t.Errorf("model %s has Bedrock prefix %q; it must pin the same version as the wire id. If a model genuinely needs a different prefix, that is a deliberate decision — document it and relax this assertion for that entry only", m, p)
+		}
+		if !strings.ContainsAny(p, "0123456789") {
+			t.Errorf("Bedrock prefix %q for %s carries no version; it can match a neighbouring version's profile", p, m)
 		}
 	}
 }
@@ -215,6 +270,38 @@ func TestCatalog_TheWorkedExample(t *testing.T) {
 		if p == AnthropicSubscription {
 			t.Error("opencode must not be offered AnthropicSubscription")
 		}
+	}
+}
+
+func TestCatalog_NovaIsBedrockOnlyAndOpencodeOnly(t *testing.T) {
+	// Nova is the first model that exercises the axes rather than riding on
+	// the old claude-code/codex symmetry, so its shape is worth pinning.
+
+	// Bedrock-only: Amazon offers no direct API for Nova, so its single
+	// provider is a cloud ROUTE rather than its vendor. That distinction is
+	// exactly why Vendor hangs off Model and not Provider.
+	got := NovaProV1.Providers()
+	if len(got) != 1 || got[0] != AWSBedrock {
+		t.Errorf("NovaProV1.Providers() = %v, want exactly [AWSBedrock]", got)
+	}
+	if NovaProV1.Vendor() != VendorAmazon {
+		t.Errorf("NovaProV1.Vendor() = %v, want VendorAmazon", NovaProV1.Vendor())
+	}
+
+	// Only opencode can run it — claude-code speaks the Anthropic API and
+	// codex is OpenAI-only, so neither can drive a Nova model however it is
+	// reached.
+	harnesses := HarnessesFor(NovaProV1)
+	if len(harnesses) != 1 || harnesses[0] != Opencode {
+		t.Errorf("HarnessesFor(NovaProV1) = %v, want exactly [Opencode]", harnesses)
+	}
+	if ClaudeCode.Supports(NovaProV1) || Codex.Supports(NovaProV1) {
+		t.Error("neither claude-code nor codex can run a Nova model")
+	}
+
+	// And it must be resolvable through opencode, or offering it is a lie.
+	if len(ProvidersFor(Opencode, NovaProV1)) == 0 {
+		t.Error("no provider can serve NovaPro through opencode")
 	}
 }
 
