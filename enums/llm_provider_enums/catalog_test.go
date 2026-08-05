@@ -428,3 +428,30 @@ func TestRuntimeResolvedProvidersHaveDiscoveryInput(t *testing.T) {
 		}
 	}
 }
+
+func TestAgentTypesFor_PriorityOrder(t *testing.T) {
+	// The first entry is the default agent for a model, and it comes from the
+	// ENUM DECLARATION ORDER. That makes the declaration load-bearing in a way
+	// nothing else would catch: inserting a new agent type in the middle would
+	// silently re-route every model it can run, with no compile error.
+	//
+	// The rule being encoded is "prefer the specialised agent over the
+	// general-purpose one".
+	cases := map[Model]AgentType{
+		ClaudeOpus48:   ClaudeCode, // opencode can run it too
+		ClaudeSonnet46: ClaudeCode,
+		ClaudeHaiku45:  ClaudeCode,
+		Gpt55:          Codex,    // opencode can run it too
+		NovaProV1:      Opencode, // the only option
+	}
+	for m, want := range cases {
+		got := AgentTypesFor(m)
+		if len(got) == 0 {
+			t.Errorf("AgentTypesFor(%s) is empty", m)
+			continue
+		}
+		if got[0] != want {
+			t.Errorf("AgentTypesFor(%s)[0] = %s, want %s — the specialised agent must outrank the general-purpose one", m, got[0], want)
+		}
+	}
+}
