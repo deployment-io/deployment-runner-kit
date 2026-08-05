@@ -137,3 +137,43 @@ func HarnessesFor(m Model) []Harness {
 	}
 	return out
 }
+
+// opencodeProviderName maps a provider to the id opencode uses in its
+// "provider/model" strings.
+//
+// Empty means opencode cannot reach the provider that way:
+//
+//   - AnthropicSubscription — subscription auth is harness-locked to genuine
+//     claude-code, so opencode must never be handed one. harnessToProviders
+//     already excludes it; this is the second line of defence.
+//   - GoogleVertex — declared but not wired anywhere.
+var opencodeProviderName = map[Provider]string{
+	AnthropicDirect: "anthropic",
+	OpenAIDirect:    "openai",
+	AWSBedrock:      "amazon-bedrock",
+}
+
+// OpencodeName returns the provider id opencode expects, or "" when opencode
+// cannot use this provider.
+func (p Provider) OpencodeName() string {
+	return opencodeProviderName[p]
+}
+
+// OpencodeModelID renders the "provider/model" string opencode takes as its
+// --model argument.
+//
+// modelID is passed as a STRING rather than a Model because the caller may
+// have resolved it to something more concrete than the catalogue holds — on
+// Bedrock the runner substitutes the discovered inference-profile id
+// (eu.amazon.nova-pro-v1:0) for the logical one. The provider prefix is what
+// opencode routes on, so it must survive that substitution.
+//
+// Returns "" when the provider has no opencode representation, so callers get
+// an empty result rather than a malformed "/model" string.
+func OpencodeModelID(modelID string, p Provider) string {
+	name := p.OpencodeName()
+	if name == "" || modelID == "" {
+		return ""
+	}
+	return name + "/" + modelID
+}

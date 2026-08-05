@@ -326,3 +326,55 @@ func contains(s, sub string) bool {
 	}
 	return false
 }
+
+func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
+	// The prefix is what opencode routes on, so these strings are a contract
+	// with the CLI, not cosmetic.
+	cases := []struct {
+		model    string
+		provider Provider
+		want     string
+	}{
+		{"claude-sonnet-4-6", AnthropicDirect, "anthropic/claude-sonnet-4-6"},
+		{"gpt-5.5", OpenAIDirect, "openai/gpt-5.5"},
+		{"nova-pro-v1", AWSBedrock, "amazon-bedrock/nova-pro-v1"},
+		// The runner substitutes the discovered profile id before rendering, so
+		// the prefix must survive a model string the catalogue never held.
+		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/eu.amazon.nova-pro-v1:0"},
+	}
+	for _, c := range cases {
+		if got := OpencodeModelID(c.model, c.provider); got != c.want {
+			t.Errorf("OpencodeModelID(%q, %s) = %q, want %q", c.model, c.provider, got, c.want)
+		}
+	}
+}
+
+func TestOpencodeModelID_EmptyForProvidersOpencodeCannotUse(t *testing.T) {
+	// Subscription auth is harness-locked to genuine claude-code — routing a
+	// subscription token through a third-party harness is prohibited, not just
+	// unsupported. harnessToProviders already excludes it; returning "" here is
+	// the second line of defence, so a caller that skips that check still
+	// cannot build a usable id.
+	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription); got != "" {
+		t.Errorf("OpencodeModelID with AnthropicSubscription = %q, want \"\"", got)
+	}
+	if got := OpencodeModelID("claude-opus-4-8", GoogleVertex); got != "" {
+		t.Errorf("OpencodeModelID with GoogleVertex = %q, want \"\" (not wired)", got)
+	}
+	// A malformed "/model" is worse than nothing — it looks valid.
+	if got := OpencodeModelID("", AWSBedrock); got != "" {
+		t.Errorf("OpencodeModelID with empty model = %q, want \"\"", got)
+	}
+}
+
+func TestOpencodeProviderNamesCoverEveryReachableProvider(t *testing.T) {
+	// If harnessToProviders says opencode can reach a provider, that provider
+	// must have an opencode name — otherwise the catalogue offers a combination
+	// no id can be rendered for, and the task fails at spawn with a malformed
+	// model.
+	for _, p := range Opencode.Providers() {
+		if p.OpencodeName() == "" {
+			t.Errorf("opencode can reach %s but it has no opencode provider name", p)
+		}
+	}
+}
