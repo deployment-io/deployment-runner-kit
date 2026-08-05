@@ -48,7 +48,7 @@ const (
 	// (Pro/Max) OAuth token. No credential is held control-plane-side: the
 	// token lives only in the customer's own AWS Secrets Manager and is read
 	// by the runner at agentbox spawn. claude-code only — the runner refuses
-	// it for other harnesses, which harnessToProviders below encodes.
+	// it for other harnesses, which agentTypeToProviders below encodes.
 	AnthropicSubscription // 4
 	// OpenAIDirect is catalogue-only; see the note above.
 	OpenAIDirect // 5

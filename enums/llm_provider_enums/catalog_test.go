@@ -121,12 +121,12 @@ func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 	// Tasks created before the agent type existed carry no AGENT_TYPE, and
 	// agentbox defaults an empty value to claude-code. Diverging here would
 	// route those Tasks to a different harness than the one that runs them.
-	h, err := ResolveHarness("")
+	h, err := ResolveAgentType("")
 	if err != nil || h != ClaudeCode {
-		t.Errorf("ResolveHarness(\"\") = %v, %v; want ClaudeCode, nil", h, err)
+		t.Errorf("ResolveAgentType(\"\") = %v, %v; want ClaudeCode, nil", h, err)
 	}
-	if _, err := ResolveHarness("nonexistent"); err == nil {
-		t.Error("ResolveHarness must reject an unknown harness rather than defaulting it")
+	if _, err := ResolveAgentType("nonexistent"); err == nil {
+		t.Error("ResolveAgentType must reject an unknown harness rather than defaulting it")
 	}
 }
 
@@ -139,10 +139,10 @@ func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 func TestCatalog_EveryHarnessModelPairHasAtLeastOneProvider(t *testing.T) {
 	// A harness listing a model it can never actually be served is an offer the
 	// product cannot honour — the user picks it and the task fails at spawn.
-	for h := ClaudeCode; h < MaxHarness; h++ {
+	for h := ClaudeCode; h < MaxAgentType; h++ {
 		for _, m := range h.Models() {
 			if got := ProvidersFor(h, m); len(got) == 0 {
-				t.Errorf("%s lists model %s but no provider can serve it — harnessToProviders and modelToProviders disagree", h, m)
+				t.Errorf("%s lists model %s but no provider can serve it — agentTypeToProviders and modelToProviders disagree", h, m)
 			}
 		}
 	}
@@ -239,7 +239,7 @@ func TestCatalog_SubscriptionIsClaudeCodeOnly(t *testing.T) {
 	// genuine `claude` CLI is what passes Anthropic's client-identity check, so
 	// this is prohibited rather than merely unsupported. If the table ever
 	// offered it elsewhere, the UI would present an option the runner drops.
-	for h := ClaudeCode; h < MaxHarness; h++ {
+	for h := ClaudeCode; h < MaxAgentType; h++ {
 		for _, p := range h.Providers() {
 			if p == AnthropicSubscription && h != ClaudeCode {
 				t.Errorf("%s lists AnthropicSubscription; only claude-code may use it", h)
@@ -291,9 +291,9 @@ func TestCatalog_NovaIsBedrockOnlyAndOpencodeOnly(t *testing.T) {
 	// Only opencode can run it — claude-code speaks the Anthropic API and
 	// codex is OpenAI-only, so neither can drive a Nova model however it is
 	// reached.
-	harnesses := HarnessesFor(NovaProV1)
+	harnesses := AgentTypesFor(NovaProV1)
 	if len(harnesses) != 1 || harnesses[0] != Opencode {
-		t.Errorf("HarnessesFor(NovaProV1) = %v, want exactly [Opencode]", harnesses)
+		t.Errorf("AgentTypesFor(NovaProV1) = %v, want exactly [Opencode]", harnesses)
 	}
 	if ClaudeCode.Supports(NovaProV1) || Codex.Supports(NovaProV1) {
 		t.Error("neither claude-code nor codex can run a Nova model")
@@ -307,13 +307,13 @@ func TestCatalog_NovaIsBedrockOnlyAndOpencodeOnly(t *testing.T) {
 
 func TestCatalog_HarnessesForIsTheInverseOfModels(t *testing.T) {
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
-		for _, h := range HarnessesFor(m) {
+		for _, h := range AgentTypesFor(m) {
 			if !h.Supports(m) {
-				t.Errorf("HarnessesFor(%s) returned %s, which does not support it", m, h)
+				t.Errorf("AgentTypesFor(%s) returned %s, which does not support it", m, h)
 			}
 		}
 	}
-	if len(HarnessesFor(Gpt55)) < 2 {
+	if len(AgentTypesFor(Gpt55)) < 2 {
 		t.Error("gpt-5.5 should be runnable by both codex and opencode; the harness axis is the point")
 	}
 }
@@ -352,7 +352,7 @@ func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
 func TestOpencodeModelID_EmptyForProvidersOpencodeCannotUse(t *testing.T) {
 	// Subscription auth is harness-locked to genuine claude-code — routing a
 	// subscription token through a third-party harness is prohibited, not just
-	// unsupported. harnessToProviders already excludes it; returning "" here is
+	// unsupported. agentTypeToProviders already excludes it; returning "" here is
 	// the second line of defence, so a caller that skips that check still
 	// cannot build a usable id.
 	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription); got != "" {
@@ -368,7 +368,7 @@ func TestOpencodeModelID_EmptyForProvidersOpencodeCannotUse(t *testing.T) {
 }
 
 func TestOpencodeProviderNamesCoverEveryReachableProvider(t *testing.T) {
-	// If harnessToProviders says opencode can reach a provider, that provider
+	// If agentTypeToProviders says opencode can reach a provider, that provider
 	// must have an opencode name — otherwise the catalogue offers a combination
 	// no id can be rendered for, and the task fails at spawn with a malformed
 	// model.
