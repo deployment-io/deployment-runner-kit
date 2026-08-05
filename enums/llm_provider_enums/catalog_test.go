@@ -121,12 +121,12 @@ func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 	// Tasks created before the agent type existed carry no AGENT_TYPE, and
 	// agentbox defaults an empty value to claude-code. Diverging here would
 	// route those Tasks to a different harness than the one that runs them.
-	h, err := ResolveHarness("")
+	h, err := ResolveAgentType("")
 	if err != nil || h != ClaudeCode {
-		t.Errorf("ResolveHarness(\"\") = %v, %v; want ClaudeCode, nil", h, err)
+		t.Errorf("ResolveAgentType(\"\") = %v, %v; want ClaudeCode, nil", h, err)
 	}
-	if _, err := ResolveHarness("nonexistent"); err == nil {
-		t.Error("ResolveHarness must reject an unknown harness rather than defaulting it")
+	if _, err := ResolveAgentType("nonexistent"); err == nil {
+		t.Error("ResolveAgentType must reject an unknown harness rather than defaulting it")
 	}
 }
 
@@ -139,10 +139,10 @@ func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 func TestCatalog_EveryHarnessModelPairHasAtLeastOneProvider(t *testing.T) {
 	// A harness listing a model it can never actually be served is an offer the
 	// product cannot honour — the user picks it and the task fails at spawn.
-	for h := ClaudeCode; h < MaxHarness; h++ {
+	for h := ClaudeCode; h < MaxAgentType; h++ {
 		for _, m := range h.Models() {
 			if got := ProvidersFor(h, m); len(got) == 0 {
-				t.Errorf("%s lists model %s but no provider can serve it — harnessToProviders and modelToProviders disagree", h, m)
+				t.Errorf("%s lists model %s but no provider can serve it — agentTypeToProviders and modelToProviders disagree", h, m)
 			}
 		}
 	}
@@ -239,7 +239,7 @@ func TestCatalog_SubscriptionIsClaudeCodeOnly(t *testing.T) {
 	// genuine `claude` CLI is what passes Anthropic's client-identity check, so
 	// this is prohibited rather than merely unsupported. If the table ever
 	// offered it elsewhere, the UI would present an option the runner drops.
-	for h := ClaudeCode; h < MaxHarness; h++ {
+	for h := ClaudeCode; h < MaxAgentType; h++ {
 		for _, p := range h.Providers() {
 			if p == AnthropicSubscription && h != ClaudeCode {
 				t.Errorf("%s lists AnthropicSubscription; only claude-code may use it", h)
@@ -291,9 +291,9 @@ func TestCatalog_NovaIsBedrockOnlyAndOpencodeOnly(t *testing.T) {
 	// Only opencode can run it — claude-code speaks the Anthropic API and
 	// codex is OpenAI-only, so neither can drive a Nova model however it is
 	// reached.
-	harnesses := HarnessesFor(NovaProV1)
+	harnesses := AgentTypesFor(NovaProV1)
 	if len(harnesses) != 1 || harnesses[0] != Opencode {
-		t.Errorf("HarnessesFor(NovaProV1) = %v, want exactly [Opencode]", harnesses)
+		t.Errorf("AgentTypesFor(NovaProV1) = %v, want exactly [Opencode]", harnesses)
 	}
 	if ClaudeCode.Supports(NovaProV1) || Codex.Supports(NovaProV1) {
 		t.Error("neither claude-code nor codex can run a Nova model")
@@ -307,13 +307,13 @@ func TestCatalog_NovaIsBedrockOnlyAndOpencodeOnly(t *testing.T) {
 
 func TestCatalog_HarnessesForIsTheInverseOfModels(t *testing.T) {
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
-		for _, h := range HarnessesFor(m) {
+		for _, h := range AgentTypesFor(m) {
 			if !h.Supports(m) {
-				t.Errorf("HarnessesFor(%s) returned %s, which does not support it", m, h)
+				t.Errorf("AgentTypesFor(%s) returned %s, which does not support it", m, h)
 			}
 		}
 	}
-	if len(HarnessesFor(Gpt55)) < 2 {
+	if len(AgentTypesFor(Gpt55)) < 2 {
 		t.Error("gpt-5.5 should be runnable by both codex and opencode; the harness axis is the point")
 	}
 }
@@ -325,4 +325,106 @@ func contains(s, sub string) bool {
 		}
 	}
 	return false
+}
+
+func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
+	// The prefix is what opencode routes on, so these strings are a contract
+	// with the CLI, not cosmetic.
+	cases := []struct {
+		model    string
+		provider Provider
+		want     string
+	}{
+		{"claude-sonnet-4-6", AnthropicDirect, "anthropic/claude-sonnet-4-6"},
+		{"gpt-5.5", OpenAIDirect, "openai/gpt-5.5"},
+		{"nova-pro-v1", AWSBedrock, "amazon-bedrock/nova-pro-v1"},
+		// The runner substitutes the discovered profile id before rendering, so
+		// the prefix must survive a model string the catalogue never held.
+		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/eu.amazon.nova-pro-v1:0"},
+	}
+	for _, c := range cases {
+		if got := OpencodeModelID(c.model, c.provider); got != c.want {
+			t.Errorf("OpencodeModelID(%q, %s) = %q, want %q", c.model, c.provider, got, c.want)
+		}
+	}
+}
+
+func TestOpencodeModelID_EmptyForProvidersOpencodeCannotUse(t *testing.T) {
+	// Subscription auth is harness-locked to genuine claude-code — routing a
+	// subscription token through a third-party harness is prohibited, not just
+	// unsupported. agentTypeToProviders already excludes it; returning "" here is
+	// the second line of defence, so a caller that skips that check still
+	// cannot build a usable id.
+	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription); got != "" {
+		t.Errorf("OpencodeModelID with AnthropicSubscription = %q, want \"\"", got)
+	}
+	if got := OpencodeModelID("claude-opus-4-8", GoogleVertex); got != "" {
+		t.Errorf("OpencodeModelID with GoogleVertex = %q, want \"\" (not wired)", got)
+	}
+	// A malformed "/model" is worse than nothing — it looks valid.
+	if got := OpencodeModelID("", AWSBedrock); got != "" {
+		t.Errorf("OpencodeModelID with empty model = %q, want \"\"", got)
+	}
+}
+
+func TestOpencodeProviderNamesCoverEveryReachableProvider(t *testing.T) {
+	// If agentTypeToProviders says opencode can reach a provider, that provider
+	// must have an opencode name — otherwise the catalogue offers a combination
+	// no id can be rendered for, and the task fails at spawn with a malformed
+	// model.
+	for _, p := range Opencode.Providers() {
+		if p.OpencodeName() == "" {
+			t.Errorf("opencode can reach %s but it has no opencode provider name", p)
+		}
+	}
+}
+
+func TestIDFor_DefaultsToTheLogicalID(t *testing.T) {
+	// The override map is empty on purpose, so every model currently reports
+	// its logical id at every provider. This pins the FALLBACK, which is the
+	// behaviour that matters when no override exists.
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		for _, p := range m.Providers() {
+			if got := m.IDFor(p); got != m.String() {
+				t.Errorf("IDFor(%s, %s) = %q, want the logical id %q", m, p, got, m)
+			}
+		}
+	}
+}
+
+func TestResolvesModelIDAtRuntime_IsAPropertyNotAProviderCheck(t *testing.T) {
+	// Callers branch on this rather than on a provider's name, so that adding
+	// Vertex does not mean hunting down every `if p == AWSBedrock`.
+	runtime := map[Provider]bool{
+		AWSBedrock:   true,
+		GoogleVertex: true,
+	}
+	for p := AnthropicDirect; p < MaxProvider; p++ {
+		if got := p.ResolvesModelIDAtRuntime(); got != runtime[p] {
+			t.Errorf("%s.ResolvesModelIDAtRuntime() = %v, want %v", p, got, runtime[p])
+		}
+	}
+	// A key-based provider declares its ids; nothing to discover.
+	for _, p := range []Provider{AnthropicDirect, OpenAIDirect, AnthropicSubscription} {
+		if p.ResolvesModelIDAtRuntime() {
+			t.Errorf("%s declares its model ids; it must not require discovery", p)
+		}
+	}
+}
+
+func TestRuntimeResolvedProvidersHaveDiscoveryInput(t *testing.T) {
+	// A provider that resolves ids at runtime needs something to match on. For
+	// Bedrock that is the version-pinned profile prefix — without it discovery
+	// has nothing to search for and the logical id reaches the API verbatim,
+	// which is exactly how the first live run failed.
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		for _, p := range m.Providers() {
+			if !p.ResolvesModelIDAtRuntime() {
+				continue
+			}
+			if p == AWSBedrock && m.BedrockProfilePrefix() == "" {
+				t.Errorf("%s is served by %s, which resolves ids at runtime, but it has no profile prefix to discover with", m, p)
+			}
+		}
+	}
 }
