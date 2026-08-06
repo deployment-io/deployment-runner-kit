@@ -521,3 +521,39 @@ func TestProviderFromKey_RejectsUnknown(t *testing.T) {
 		t.Error("an empty key must be an error")
 	}
 }
+
+func TestClaudeCodeUseBedrock_IsTheCLIsOwnContract(t *testing.T) {
+	// This is Anthropic's variable, not ours — a deployed claude-code is
+	// looking for this exact name and value. Ours belong in typed job
+	// parameters (parameters_enums.AgentProvider), not here.
+	if EnvClaudeCodeUseBedrock != "CLAUDE_CODE_USE_BEDROCK" || ClaudeCodeUseBedrockValue != "1" {
+		t.Errorf("EnvClaudeCodeUseBedrock=%q value=%q; claude-code reads CLAUDE_CODE_USE_BEDROCK=1", EnvClaudeCodeUseBedrock, ClaudeCodeUseBedrockValue)
+	}
+}
+
+func TestApplyClaudeCodeUseBedrock_OnlyForClaudeCodeOnBedrock(t *testing.T) {
+	env := map[string]string{}
+	ApplyClaudeCodeUseBedrock(env, AWSBedrock, ClaudeCode)
+	if env[EnvClaudeCodeUseBedrock] != ClaudeCodeUseBedrockValue {
+		t.Error("claude-code on Bedrock needs its own switch set")
+	}
+
+	// No other agent understands this variable. codex ignores it; opencode
+	// selects Bedrock through its model id instead. Write-if-needed means these
+	// simply never get it — there is no strip step that could miss one.
+	for _, c := range []struct {
+		p Provider
+		a AgentType
+	}{
+		{AWSBedrock, Codex},
+		{AWSBedrock, Opencode},
+		{AnthropicDirect, ClaudeCode},
+		{AnthropicSubscription, ClaudeCode},
+	} {
+		env := map[string]string{}
+		ApplyClaudeCodeUseBedrock(env, c.p, c.a)
+		if _, ok := env[EnvClaudeCodeUseBedrock]; ok {
+			t.Errorf("%v/%v must not get claude-code's Bedrock switch", c.p, c.a)
+		}
+	}
+}

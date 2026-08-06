@@ -131,6 +131,7 @@ const (
 	ClaudeCodeVersion            Key = 117 //string - pinned @anthropic-ai/claude-code version installed inside agentbox (e.g., "2.1.141"); empty = use the agentbox image's Dockerfile-baked default
 	CodexVersion                 Key = 118 //string - pinned @openai/codex version installed inside agentbox (e.g., "0.136.0"); empty = use the agentbox image's Dockerfile-baked default
 	SessionUUID                  Key = 119 //string - stable Assistant-session UUID forwarded to agentbox as SESSION_ID (the agent's --session-id) for conversation continuity / crash recovery across re-runs
+	AgentProvider                Key = 120 //string - llm_provider_enums.Provider slug ("anthropic-direct", "aws-bedrock", "anthropic-subscription", ...) telling the runner HOW to authenticate. Typed sibling of AgentType, deliberately NOT a marker inside AgentEnvVars: this is a control decision the runner acts on, not payload for the container.
 )
 
 var keyToString = map[Key]string{
@@ -253,6 +254,7 @@ var keyToString = map[Key]string{
 	ClaudeCodeVersion:            "claude code version",
 	CodexVersion:                 "codex version",
 	SessionUUID:                  "session uuid",
+	AgentProvider:                "agent provider",
 }
 
 func (k Key) String() string {
@@ -383,6 +385,7 @@ var keyMap = map[Key]string{
 	ClaudeCodeVersion:            "117",
 	CodexVersion:                 "118",
 	SessionUUID:                  "119",
+	AgentProvider:                "120",
 }
 
 func (k Key) Key() (string, error) {
