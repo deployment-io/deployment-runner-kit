@@ -22,29 +22,37 @@ package llm_provider_enums
 // and no failing task. Reading Provider directly removes the marker, the round
 // trip, and that whole failure mode.
 const (
-	// EnvBedrockMode is claude-code's OWN switch for routing through Bedrock —
-	// its name and value are Anthropic's, not ours, which is exactly why this
-	// one legitimately lives in the container env.
+	// EnvClaudeCodeUseBedrock is claude-code's OWN switch for routing through
+	// Bedrock. Its name and value are Anthropic's, not ours — which is why this
+	// one legitimately lives in the container env, and why the identifier names
+	// the CLI rather than the concept. There is no general "Bedrock mode" env
+	// var to abstract over: codex has no equivalent, and opencode selects
+	// Bedrock through its model id. A neutral name here would invite handing a
+	// second agent a variable it does not understand.
 	//
-	// The runner WRITES it (see ApplyBedrockMode); nothing on our side reads it
-	// back. Derive from Provider instead.
-	EnvBedrockMode = "CLAUDE_CODE_USE_BEDROCK"
+	// The runner WRITES it (see ApplyClaudeCodeUseBedrock); nothing on our side
+	// reads it back. Derive from Provider instead.
+	EnvClaudeCodeUseBedrock = "CLAUDE_CODE_USE_BEDROCK"
 
-	// BedrockModeValue is what EnvBedrockMode is set to.
-	BedrockModeValue = "1"
+	// ClaudeCodeUseBedrockValue is what EnvClaudeCodeUseBedrock is set to.
+	// Meaningless on its own — it exists only to name that variable's value,
+	// which is what binds it to claude-code too.
+	ClaudeCodeUseBedrockValue = "1"
 )
 
-// ApplyBedrockMode sets claude-code's Bedrock switch when — and only when — the
-// org's provider routes through Bedrock AND the agent is claude-code. No other
-// agent understands this variable: codex ignores it, and opencode selects
-// Bedrock through its own "amazon-bedrock/…" model id (see OpencodeModelID).
+// ApplyClaudeCodeUseBedrock sets claude-code's Bedrock switch when — and only
+// when — the org's provider routes through Bedrock AND the agent is
+// claude-code. No other agent understands this variable: codex ignores it, and
+// opencode selects Bedrock through its own "amazon-bedrock/…" model id (see
+// OpencodeModelID).
 //
-// Write-if-needed, deliberately, rather than the strip-if-wrong-agent it
-// replaces. Removing a variable that should not be there fails open — miss one
-// path and it leaks into the container; adding one only where it belongs cannot
-// leak at all.
-func ApplyBedrockMode(env map[string]string, p Provider, agentType AgentType) {
+// It keeps taking agentType despite being claude-code-specific, so callers can
+// call it unconditionally and let it refuse. That is the point: it replaces a
+// strip-if-wrong-agent step, and removing a variable that should not be there
+// fails open — miss one path and it leaks into the container. Pushing the
+// agent check back to the caller would reintroduce exactly that.
+func ApplyClaudeCodeUseBedrock(env map[string]string, p Provider, agentType AgentType) {
 	if p == AWSBedrock && agentType == ClaudeCode {
-		env[EnvBedrockMode] = BedrockModeValue
+		env[EnvClaudeCodeUseBedrock] = ClaudeCodeUseBedrockValue
 	}
 }

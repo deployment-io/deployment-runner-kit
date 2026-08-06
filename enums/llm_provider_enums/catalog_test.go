@@ -522,19 +522,19 @@ func TestProviderFromKey_RejectsUnknown(t *testing.T) {
 	}
 }
 
-func TestAgentEnvContract_OnlyClaudeCodesOwnSwitchRemains(t *testing.T) {
+func TestClaudeCodeUseBedrock_IsTheCLIsOwnContract(t *testing.T) {
 	// This is Anthropic's variable, not ours — a deployed claude-code is
 	// looking for this exact name and value. Ours belong in typed job
 	// parameters (parameters_enums.AgentProvider), not here.
-	if EnvBedrockMode != "CLAUDE_CODE_USE_BEDROCK" || BedrockModeValue != "1" {
-		t.Errorf("EnvBedrockMode=%q value=%q; claude-code reads CLAUDE_CODE_USE_BEDROCK=1", EnvBedrockMode, BedrockModeValue)
+	if EnvClaudeCodeUseBedrock != "CLAUDE_CODE_USE_BEDROCK" || ClaudeCodeUseBedrockValue != "1" {
+		t.Errorf("EnvClaudeCodeUseBedrock=%q value=%q; claude-code reads CLAUDE_CODE_USE_BEDROCK=1", EnvClaudeCodeUseBedrock, ClaudeCodeUseBedrockValue)
 	}
 }
 
-func TestApplyBedrockMode_OnlyForClaudeCodeOnBedrock(t *testing.T) {
+func TestApplyClaudeCodeUseBedrock_OnlyForClaudeCodeOnBedrock(t *testing.T) {
 	env := map[string]string{}
-	ApplyBedrockMode(env, AWSBedrock, ClaudeCode)
-	if env[EnvBedrockMode] != BedrockModeValue {
+	ApplyClaudeCodeUseBedrock(env, AWSBedrock, ClaudeCode)
+	if env[EnvClaudeCodeUseBedrock] != ClaudeCodeUseBedrockValue {
 		t.Error("claude-code on Bedrock needs its own switch set")
 	}
 
@@ -551,8 +551,8 @@ func TestApplyBedrockMode_OnlyForClaudeCodeOnBedrock(t *testing.T) {
 		{AnthropicSubscription, ClaudeCode},
 	} {
 		env := map[string]string{}
-		ApplyBedrockMode(env, c.p, c.a)
-		if _, ok := env[EnvBedrockMode]; ok {
+		ApplyClaudeCodeUseBedrock(env, c.p, c.a)
+		if _, ok := env[EnvClaudeCodeUseBedrock]; ok {
 			t.Errorf("%v/%v must not get claude-code's Bedrock switch", c.p, c.a)
 		}
 	}
