@@ -34,6 +34,15 @@ const (
 	// reads it back. Derive from Provider instead.
 	EnvClaudeCodeUseBedrock = "CLAUDE_CODE_USE_BEDROCK"
 
+	// EnvModel is agentbox's generic model variable, read by whichever agent it
+	// spawns.
+	EnvModel = "MODEL"
+
+	// EnvClaudeCodeBedrockModel is where claude-code reads its model when — and
+	// only when — it is in Bedrock mode. Off Bedrock it takes the model from
+	// EnvModel instead. Anthropic's variable, like the switch above.
+	EnvClaudeCodeBedrockModel = "ANTHROPIC_MODEL"
+
 	// ClaudeCodeUseBedrockValue is what EnvClaudeCodeUseBedrock is set to.
 	// Meaningless on its own — it exists only to name that variable's value,
 	// which is what binds it to claude-code too.
@@ -52,7 +61,37 @@ const (
 // fails open — miss one path and it leaks into the container. Pushing the
 // agent check back to the caller would reintroduce exactly that.
 func ApplyClaudeCodeUseBedrock(env map[string]string, p Provider, agentType AgentType) {
-	if p == AWSBedrock && agentType == ClaudeCode {
+	if ClaudeCodeUsesBedrock(p, agentType) {
 		env[EnvClaudeCodeUseBedrock] = ClaudeCodeUseBedrockValue
 	}
+}
+
+// ClaudeCodeUsesBedrock reports whether this spawn puts claude-code into its
+// Bedrock mode.
+//
+// ONE predicate, because putting claude-code in Bedrock mode and telling it
+// where to read the model are two halves of the same fact. They were written
+// out separately — the switch here, the model variable in deployment-runner —
+// and had already drifted: the runner keyed the model variable on the provider
+// alone, so codex on Bedrock would have been pointed at a variable only
+// claude-code reads. An agent in Bedrock mode reading the wrong variable, or
+// reading the right one without being in the mode, is broken either way.
+//
+// Deliberately not phrased as "is this Bedrock": the answer depends on the
+// AGENT. opencode reaches Bedrock too, through its own "amazon-bedrock/…" model
+// id, and must not be caught by this.
+func ClaudeCodeUsesBedrock(p Provider, agentType AgentType) bool {
+	return p == AWSBedrock && agentType == ClaudeCode
+}
+
+// ModelEnvVar returns the env var this spawn's agent reads its model from.
+//
+// Exists so no caller writes that branch itself. It is the same fact as
+// ApplyClaudeCodeUseBedrock, and the two cannot disagree because both derive
+// from ClaudeCodeUsesBedrock.
+func ModelEnvVar(p Provider, agentType AgentType) string {
+	if ClaudeCodeUsesBedrock(p, agentType) {
+		return EnvClaudeCodeBedrockModel
+	}
+	return EnvModel
 }
