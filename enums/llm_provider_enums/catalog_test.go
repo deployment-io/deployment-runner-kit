@@ -399,7 +399,7 @@ func TestResolvesModelIDAtRuntime_IsAPropertyNotAProviderCheck(t *testing.T) {
 		AWSBedrock:   true,
 		GoogleVertex: true,
 	}
-	for p := AnthropicDirect; p < MaxProvider; p++ {
+	for _, p := range AllProviders() {
 		if got := p.ResolvesModelIDAtRuntime(); got != runtime[p] {
 			t.Errorf("%s.ResolvesModelIDAtRuntime() = %v, want %v", p, got, runtime[p])
 		}
@@ -486,7 +486,7 @@ func TestProviderKeys_AreDistinctFromDisplayStrings(t *testing.T) {
 	// stay free to change, so no key may equal a display string. If they ever
 	// coincide, someone will "simplify" by using one for both and couple a copy
 	// edit to stored data.
-	for p := AnthropicDirect; p < MaxProvider; p++ {
+	for _, p := range AllProviders() {
 		if p.Key() == "" {
 			t.Errorf("%s has no storage key", p)
 			continue
@@ -502,7 +502,7 @@ func TestProviderKeys_AreDistinctFromDisplayStrings(t *testing.T) {
 
 func TestProviderKeys_AreUnique(t *testing.T) {
 	seen := map[string]Provider{}
-	for p := AnthropicDirect; p < MaxProvider; p++ {
+	for _, p := range AllProviders() {
 		k := p.Key()
 		if prev, dup := seen[k]; dup {
 			t.Errorf("key %q is shared by %s and %s; one org entry would serve both", k, prev, p)
@@ -595,5 +595,30 @@ func TestConfigurableProviders_ExcludesReservedOnes(t *testing.T) {
 		if got[i-1] >= got[i] {
 			t.Errorf("ConfigurableProviders is not in enum order: %v", got)
 		}
+	}
+}
+
+// Explicit values only help if nothing reintroduces a positional assumption.
+// AllProviders must cover every declared provider and stay numerically ordered,
+// because ConfigurableProviders and the settings UI both read it as an order.
+func TestAllProviders_CoversEveryDeclaredProviderInOrder(t *testing.T) {
+	all := AllProviders()
+	if len(all) != len(providerToString) {
+		t.Errorf("AllProviders returned %d, want %d — a declared provider is being skipped", len(all), len(providerToString))
+	}
+	for i := 1; i < len(all); i++ {
+		if all[i-1] >= all[i] {
+			t.Errorf("AllProviders is not in numeric order: %v", all)
+		}
+	}
+	for _, p := range all {
+		if !p.IsValid() {
+			t.Errorf("%v is declared but not valid", p)
+		}
+	}
+	// A value with no declaration must be invalid — the gap left by a reserved
+	// or future provider cannot read as usable.
+	if Provider(99).IsValid() {
+		t.Error("an undeclared value must not be valid; a range check would have accepted it")
 	}
 }

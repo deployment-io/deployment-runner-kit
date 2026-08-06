@@ -194,9 +194,8 @@ func ConfigurableProviders() []Provider {
 			offered[p] = true
 		}
 	}
-	// Enum order, so the settings UI and the API agree without either sorting.
 	var out []Provider
-	for p := AnthropicDirect; p < MaxProvider; p++ {
+	for _, p := range AllProviders() {
 		if offered[p] {
 			out = append(out, p)
 		}
