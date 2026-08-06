@@ -12,6 +12,8 @@
 // deployment-runner for what the alternative looks like.
 package llm_provider_enums
 
+import "fmt"
+
 // Provider identifies WHOSE models are being called and over which API.
 //
 // ⚠️ PERSISTED — DO NOT RENUMBER. Values 1-4 are stored in live MongoDB
@@ -164,4 +166,53 @@ func (p Provider) ResolvesModelIDAtRuntime() bool {
 		return true
 	}
 	return false
+}
+
+// providerKey is the STABLE, machine-facing identifier for a provider.
+//
+// ⚠️ NOT the same as String(), and deliberately so. String() is user-facing
+// display text rendered in the dashboard; these are storage and URL keys. If
+// they were the same value, a copy edit — "Claude Subscription" reading better
+// as "Anthropic Subscription", say — would orphan every stored document and
+// break every URL. Keeping them separate lets display text change freely.
+//
+// ⚠️ THESE ARE PERSISTED as the keys of Organization.LLMConfig.Providers, and
+// appear in API paths (/llm-providers/{key}). Changing one silently orphans an
+// org's credentials for that provider — the entry survives under the old key
+// and is simply never read again. Treat them like the model wire ids: append,
+// never rename. TestProviderKeys_AreStable pins each one.
+//
+// Chosen over the numeric enum values for readability: an incident is easier
+// to work through against "llmConfig.providers.aws-bedrock" than
+// "llmConfig.providers.2".
+var providerKey = map[Provider]string{
+	AnthropicDirect:       "anthropic-direct",
+	AWSBedrock:            "aws-bedrock",
+	GoogleVertex:          "google-vertex",
+	AnthropicSubscription: "anthropic-subscription",
+	OpenAIDirect:          "openai-direct",
+}
+
+var keyToProvider = func() map[string]Provider {
+	m := make(map[string]Provider, len(providerKey))
+	for p, k := range providerKey {
+		m[k] = p
+	}
+	return m
+}()
+
+// Key returns the stable storage/URL identifier for a provider.
+func (p Provider) Key() string {
+	return providerKey[p]
+}
+
+// ProviderFromKey parses a stored or URL-supplied provider key. An unknown key
+// is an error rather than a zero value: it means either a provider this build
+// does not know, or a corrupted document, and both deserve to surface rather
+// than silently read as "unconfigured".
+func ProviderFromKey(key string) (Provider, error) {
+	if p, ok := keyToProvider[key]; ok {
+		return p, nil
+	}
+	return 0, fmt.Errorf("unknown provider key %q", key)
 }
