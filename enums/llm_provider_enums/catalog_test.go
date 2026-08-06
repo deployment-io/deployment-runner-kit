@@ -622,3 +622,29 @@ func TestAllProviders_CoversEveryDeclaredProviderInOrder(t *testing.T) {
 		t.Error("an undeclared value must not be valid; a range check would have accepted it")
 	}
 }
+
+// The invariant this pair exists to hold: an agent is put into Bedrock mode by
+// exactly the same rule that decides where it reads its model. Split across two
+// repos it could not be tested at all, and it had already drifted.
+func TestModelEnvVar_AgreesWithTheBedrockSwitch(t *testing.T) {
+	for _, p := range AllProviders() {
+		for _, agentType := range []AgentType{ClaudeCode, Codex, Opencode} {
+			env := map[string]string{}
+			ApplyClaudeCodeUseBedrock(env, p, agentType)
+			inBedrockMode := env[EnvClaudeCodeUseBedrock] == ClaudeCodeUseBedrockValue
+			readsAnthropicModel := ModelEnvVar(p, agentType) == EnvClaudeCodeBedrockModel
+			if inBedrockMode != readsAnthropicModel {
+				t.Errorf("%v/%v: Bedrock mode = %v but reads %s — an agent in the mode must read ANTHROPIC_MODEL, and one reading it must be in the mode",
+					p, agentType, inBedrockMode, ModelEnvVar(p, agentType))
+			}
+		}
+	}
+	// The concrete case that was wrong: codex on Bedrock reads the generic var.
+	if got := ModelEnvVar(AWSBedrock, Codex); got != EnvModel {
+		t.Errorf("codex on Bedrock reads %s; only claude-code reads ANTHROPIC_MODEL", got)
+	}
+	// And opencode, which reaches Bedrock through its model id, not a switch.
+	if got := ModelEnvVar(AWSBedrock, Opencode); got != EnvModel {
+		t.Errorf("opencode on Bedrock reads %s, want %s", got, EnvModel)
+	}
+}
