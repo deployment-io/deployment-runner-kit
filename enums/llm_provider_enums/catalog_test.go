@@ -455,3 +455,69 @@ func TestAgentTypesFor_PriorityOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestProviderKeys_AreStable(t *testing.T) {
+	// These are PERSISTED as the keys of LLMConfig.Providers and appear in API
+	// paths. Changing one silently orphans an org's credentials for that
+	// provider — the entry survives under the old key and is simply never read
+	// again, so the org looks unconfigured with nothing to explain why.
+	//
+	// Same contract as the model wire ids: append, never rename.
+	want := map[Provider]string{
+		AnthropicDirect:       "anthropic-direct",
+		AWSBedrock:            "aws-bedrock",
+		GoogleVertex:          "google-vertex",
+		AnthropicSubscription: "anthropic-subscription",
+		OpenAIDirect:          "openai-direct",
+	}
+	for p, k := range want {
+		if got := p.Key(); got != k {
+			t.Errorf("%s.Key() = %q, want %q — changing a key orphans stored credentials", p, got, k)
+		}
+		back, err := ProviderFromKey(k)
+		if err != nil || back != p {
+			t.Errorf("ProviderFromKey(%q) = %v, %v; want %s round-tripping", k, back, err, p)
+		}
+	}
+}
+
+func TestProviderKeys_AreDistinctFromDisplayStrings(t *testing.T) {
+	// The whole point of a separate vocabulary: String() is user-facing and must
+	// stay free to change, so no key may equal a display string. If they ever
+	// coincide, someone will "simplify" by using one for both and couple a copy
+	// edit to stored data.
+	for p := AnthropicDirect; p < MaxProvider; p++ {
+		if p.Key() == "" {
+			t.Errorf("%s has no storage key", p)
+			continue
+		}
+		if p.Key() == p.String() {
+			t.Errorf("%s: key and display string are both %q; they must stay separate vocabularies", p, p.Key())
+		}
+		if strings.ContainsAny(p.Key(), " .$") {
+			t.Errorf("%s key %q contains a character that is awkward in a Mongo path or URL", p, p.Key())
+		}
+	}
+}
+
+func TestProviderKeys_AreUnique(t *testing.T) {
+	seen := map[string]Provider{}
+	for p := AnthropicDirect; p < MaxProvider; p++ {
+		k := p.Key()
+		if prev, dup := seen[k]; dup {
+			t.Errorf("key %q is shared by %s and %s; one org entry would serve both", k, prev, p)
+		}
+		seen[k] = p
+	}
+}
+
+func TestProviderFromKey_RejectsUnknown(t *testing.T) {
+	// A corrupted document or a provider from a newer build must surface, not
+	// read as "unconfigured".
+	if _, err := ProviderFromKey("not-a-provider"); err == nil {
+		t.Error("an unknown key must be an error, not a zero Provider")
+	}
+	if _, err := ProviderFromKey(""); err == nil {
+		t.Error("an empty key must be an error")
+	}
+}
