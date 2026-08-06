@@ -557,3 +557,43 @@ func TestApplyClaudeCodeUseBedrock_OnlyForClaudeCodeOnBedrock(t *testing.T) {
 		}
 	}
 }
+
+// The numbering is the storage format. AnthropicSubscription is 4 in live
+// documents, so removing an earlier constant to "clean up" would silently
+// reinterpret every subscription org's stored provider as something else.
+// GoogleVertex is withheld by the catalogue, not by deletion — this pins that.
+func TestProviderNumbering_IsStableAcrossReservedSlots(t *testing.T) {
+	for p, want := range map[Provider]uint{
+		AnthropicDirect:       1,
+		AWSBedrock:            2,
+		GoogleVertex:          3,
+		AnthropicSubscription: 4,
+		OpenAIDirect:          5,
+	} {
+		if uint(p) != want {
+			t.Errorf("%v = %d, want %d — renumbering reinterprets stored documents", p, uint(p), want)
+		}
+	}
+}
+
+func TestConfigurableProviders_ExcludesReservedOnes(t *testing.T) {
+	if GoogleVertex.IsConfigurable() {
+		t.Error("GoogleVertex is reserved and unbuilt; offering it would accept a config nothing can serve")
+	}
+	// Everything an agent lists must be configurable, or an org could pick a
+	// model it is then unable to run.
+	for agentType, providers := range agentTypeToProviders {
+		for _, p := range providers {
+			if !p.IsConfigurable() {
+				t.Errorf("%v lists %v, which is not configurable", agentType, p)
+			}
+		}
+	}
+	// Enum order, so callers need not sort.
+	got := ConfigurableProviders()
+	for i := 1; i < len(got); i++ {
+		if got[i-1] >= got[i] {
+			t.Errorf("ConfigurableProviders is not in enum order: %v", got)
+		}
+	}
+}

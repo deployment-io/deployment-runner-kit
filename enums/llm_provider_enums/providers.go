@@ -45,7 +45,12 @@ type Provider uint
 const (
 	AnthropicDirect Provider = iota + 1 // 1 — Anthropic API key
 	AWSBedrock                          // 2 — runner-assumed IAM role, no stored secret
-	GoogleVertex                        // 3 — reserved, not wired
+	// GoogleVertex is RESERVED, not offered. The constant stays so the numbers
+	// below it do not move — AnthropicSubscription is 4 in live documents, and
+	// renumbering would silently reinterpret every subscription org's stored
+	// provider. It is absent from the catalogue instead, which is what makes it
+	// unofferable: see ConfigurableProviders.
+	GoogleVertex // 3
 	// AnthropicSubscription is the customer's own Claude Code subscription
 	// (Pro/Max) OAuth token. No credential is held control-plane-side: the
 	// token lives only in the customer's own AWS Secrets Manager and is read
