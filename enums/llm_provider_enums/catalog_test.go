@@ -521,3 +521,42 @@ func TestProviderFromKey_RejectsUnknown(t *testing.T) {
 		t.Error("an empty key must be an error")
 	}
 }
+
+func TestAgentEnvContract_ValuesAreTheContract(t *testing.T) {
+	// A deployed runner is looking for these exact strings. Changing one makes
+	// a mismatched deploy fail SILENTLY — the marker is simply never
+	// recognised, and the task falls back rather than erroring. Renaming the Go
+	// identifiers is free; renaming these is not.
+	if EnvSubscriptionAuthMode != "CLAUDE_AUTH_MODE" {
+		t.Errorf("EnvSubscriptionAuthMode = %q; a deployed runner reads CLAUDE_AUTH_MODE", EnvSubscriptionAuthMode)
+	}
+	if SubscriptionAuthModeValue != "subscription" {
+		t.Errorf("SubscriptionAuthModeValue = %q; a deployed runner compares against \"subscription\"", SubscriptionAuthModeValue)
+	}
+	if EnvBedrockMode != "CLAUDE_CODE_USE_BEDROCK" {
+		t.Errorf("EnvBedrockMode = %q; this is also claude-code's own Bedrock switch", EnvBedrockMode)
+	}
+	if BedrockModeValue != "1" {
+		t.Errorf("BedrockModeValue = %q, want \"1\"", BedrockModeValue)
+	}
+}
+
+func TestAgentEnvContract_Helpers(t *testing.T) {
+	if !IsSubscriptionAuthMode(map[string]string{EnvSubscriptionAuthMode: SubscriptionAuthModeValue}) {
+		t.Error("subscription marker not recognised")
+	}
+	// Anything other than the exact value means not-subscription — a partial or
+	// misspelled marker must not engage subscription auth.
+	if IsSubscriptionAuthMode(map[string]string{EnvSubscriptionAuthMode: "Subscription"}) {
+		t.Error("comparison must be exact; a near-miss must not engage subscription auth")
+	}
+	if !IsBedrockMode(map[string]string{EnvBedrockMode: BedrockModeValue}) {
+		t.Error("Bedrock marker not recognised")
+	}
+	if IsBedrockMode(map[string]string{EnvBedrockMode: "true"}) {
+		t.Error("only \"1\" enables Bedrock mode")
+	}
+	if IsBedrockMode(map[string]string{}) || IsSubscriptionAuthMode(map[string]string{}) {
+		t.Error("an empty env marks nothing")
+	}
+}
