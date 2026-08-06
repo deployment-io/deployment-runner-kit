@@ -522,78 +522,38 @@ func TestProviderFromKey_RejectsUnknown(t *testing.T) {
 	}
 }
 
-func TestAgentEnvContract_ValuesAreTheContract(t *testing.T) {
-	// A deployed runner is looking for these exact strings. Changing one makes
-	// a mismatched deploy fail SILENTLY — the marker is simply never
-	// recognised, and the task falls back rather than erroring. Renaming the Go
-	// identifiers is free; renaming these is not.
-	if EnvAgentAuthMode != "AGENT_AUTH_MODE" {
-		t.Errorf("EnvAgentAuthMode = %q, want AGENT_AUTH_MODE", EnvAgentAuthMode)
-	}
-	if EnvAgentAuthModeLegacy != "CLAUDE_AUTH_MODE" {
-		t.Errorf("EnvAgentAuthModeLegacy = %q; deployed runners still read CLAUDE_AUTH_MODE", EnvAgentAuthModeLegacy)
-	}
-	if SubscriptionAuthModeValue != "subscription" {
-		t.Errorf("SubscriptionAuthModeValue = %q; a deployed runner compares against \"subscription\"", SubscriptionAuthModeValue)
-	}
-	if EnvBedrockMode != "CLAUDE_CODE_USE_BEDROCK" {
-		t.Errorf("EnvBedrockMode = %q; this is also claude-code's own Bedrock switch", EnvBedrockMode)
-	}
-	if BedrockModeValue != "1" {
-		t.Errorf("BedrockModeValue = %q, want \"1\"", BedrockModeValue)
+func TestAgentEnvContract_OnlyClaudeCodesOwnSwitchRemains(t *testing.T) {
+	// This is Anthropic's variable, not ours — a deployed claude-code is
+	// looking for this exact name and value. Ours belong in typed job
+	// parameters (parameters_enums.AgentProvider), not here.
+	if EnvBedrockMode != "CLAUDE_CODE_USE_BEDROCK" || BedrockModeValue != "1" {
+		t.Errorf("EnvBedrockMode=%q value=%q; claude-code reads CLAUDE_CODE_USE_BEDROCK=1", EnvBedrockMode, BedrockModeValue)
 	}
 }
 
-func TestAgentEnvContract_Helpers(t *testing.T) {
-	if !IsSubscriptionAuthMode(map[string]string{EnvAgentAuthMode: SubscriptionAuthModeValue}) {
-		t.Error("subscription marker not recognised")
-	}
-	// Both names must work during the transition. A control plane sending the
-	// new name to a runner that only knows the old one would silently fall back
-	// to the API key — metered billing, no error, tasks still passing.
-	if !IsSubscriptionAuthMode(map[string]string{EnvAgentAuthModeLegacy: SubscriptionAuthModeValue}) {
-		t.Error("the legacy name must keep working until every runner is upgraded")
-	}
-	// Anything other than the exact value means not-subscription — a partial or
-	// misspelled marker must not engage subscription auth.
-	if IsSubscriptionAuthMode(map[string]string{EnvAgentAuthMode: "Subscription"}) {
-		t.Error("comparison must be exact; a near-miss must not engage subscription auth")
-	}
-	if !IsBedrockMode(map[string]string{EnvBedrockMode: BedrockModeValue}) {
-		t.Error("Bedrock marker not recognised")
-	}
-	if IsBedrockMode(map[string]string{EnvBedrockMode: "true"}) {
-		t.Error("only \"1\" enables Bedrock mode")
-	}
-	if IsBedrockMode(map[string]string{}) || IsSubscriptionAuthMode(map[string]string{}) {
-		t.Error("an empty env marks nothing")
-	}
-}
-
-// The marker is ours, not a CLI's: acting on it means removing it. A leaked
-// marker is invisible at runtime — the task still passes, the variable just
-// sits in the container — so it has to be a test.
-func TestConsumeSubscriptionAuthMode_StripsBothNames(t *testing.T) {
-	for _, name := range []string{EnvAgentAuthMode, EnvAgentAuthModeLegacy} {
-		env := map[string]string{name: SubscriptionAuthModeValue, "KEEP": "1"}
-		if !ConsumeSubscriptionAuthMode(env) {
-			t.Errorf("%s: not recognised as subscription auth", name)
-		}
-		if _, ok := env[name]; ok {
-			t.Errorf("%s leaked into the agent container env", name)
-		}
-		if env["KEEP"] != "1" {
-			t.Errorf("%s: unrelated env vars must survive", name)
-		}
+func TestApplyBedrockMode_OnlyForClaudeCodeOnBedrock(t *testing.T) {
+	env := map[string]string{}
+	ApplyBedrockMode(env, AWSBedrock, ClaudeCode)
+	if env[EnvBedrockMode] != BedrockModeValue {
+		t.Error("claude-code on Bedrock needs its own switch set")
 	}
 
-	// A marker set to anything else is still ours, and still must not reach the
-	// container — otherwise a typo becomes a variable the CLI can see.
-	env := map[string]string{EnvAgentAuthMode: "api-key"}
-	if ConsumeSubscriptionAuthMode(env) {
-		t.Error("a non-subscription value must not engage subscription auth")
-	}
-	if _, ok := env[EnvAgentAuthMode]; ok {
-		t.Error("the marker must be stripped even when it does not engage")
+	// No other agent understands this variable. codex ignores it; opencode
+	// selects Bedrock through its model id instead. Write-if-needed means these
+	// simply never get it — there is no strip step that could miss one.
+	for _, c := range []struct {
+		p Provider
+		a AgentType
+	}{
+		{AWSBedrock, Codex},
+		{AWSBedrock, Opencode},
+		{AnthropicDirect, ClaudeCode},
+		{AnthropicSubscription, ClaudeCode},
+	} {
+		env := map[string]string{}
+		ApplyBedrockMode(env, c.p, c.a)
+		if _, ok := env[EnvBedrockMode]; ok {
+			t.Errorf("%v/%v must not get claude-code's Bedrock switch", c.p, c.a)
+		}
 	}
 }

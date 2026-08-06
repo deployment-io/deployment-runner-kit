@@ -1,97 +1,50 @@
 package llm_provider_enums
 
-// The env-var contract between the control plane and the agent container.
+// The env-var contract for spawning an agent container.
 //
-// These names and values are a CROSS-REPO WIRE CONTRACT. deployment-server
-// puts them into a Job's AgentEnvVars; deployment-runner reads them to decide
-// what to inject; agentbox reads some of them directly. They live here because
-// deployment-runner-kit is the only module all three can import — the runner
-// cannot import kit, which is why it previously carried its own copies with a
-// comment reading "change them in both or subscription auth silently stops
-// engaging and every task quietly falls back to the API key". That comment
-// described a bug waiting to happen; this removes the possibility.
+// ⚠️ ONLY TWO KINDS OF THING BELONG IN AN AGENT'S ENV:
 //
-// ⚠️ THE VALUES ARE THE CONTRACT, not the identifiers. Renaming a Go constant
-// is free and compile-checked. Changing a string here changes what a deployed
-// runner is looking for, so a mismatched deploy fails silently: the marker is
-// simply never recognised and the task falls back rather than erroring.
+//  1. secrets and settings the agent itself consumes (ANTHROPIC_API_KEY,
+//     AWS_* credentials);
+//  2. a CLI's own documented switches, whose names we do not choose.
+//
+// A decision *we* make about how to run the agent is NEITHER. It travels as a
+// typed job parameter — parameters_enums.AgentProvider, the sibling of
+// AgentType — because that is a control signal for the runner, not payload for
+// the container.
+//
+// This distinction used to be blurred: the provider was encoded as a
+// CLAUDE_AUTH_MODE string, stuffed into the same bundle as the API key, and
+// then read back and deleted by the runner. That round trip threw away the
+// type, put a non-secret in the secrets channel, and created a contract whose
+// breakage was silent — a name mismatch meant subscription auth simply never
+// engaged and every task fell back to metered API-key billing, with no error
+// and no failing task. Reading Provider directly removes the marker, the round
+// trip, and that whole failure mode.
 const (
-	// EnvAgentAuthMode marks an org as authenticating with its own subscription
-	// rather than an API key. NON-SECRET: the OAuth token itself lives in the
-	// customer's own Secrets Manager and is read runner-side, never transiting
-	// the control plane.
+	// EnvBedrockMode is claude-code's OWN switch for routing through Bedrock —
+	// its name and value are Anthropic's, not ours, which is exactly why this
+	// one legitimately lives in the container env.
 	//
-	// AGENT-NEUTRAL BY DESIGN. Unlike EnvBedrockMode below, this marker is
-	// purely ours — the runner consumes it and deletes it, so no CLI ever sees
-	// it and the name was never constrained. It composes with AGENT_TYPE:
-	// AGENT_TYPE=claude-code + AGENT_AUTH_MODE=subscription today, and
-	// AGENT_TYPE=codex + AGENT_AUTH_MODE=subscription when a Codex
-	// subscription lands — no second marker, no second code path deciding
-	// which one to read.
-	EnvAgentAuthMode = "AGENT_AUTH_MODE"
-
-	// EnvAgentAuthModeLegacy is the name this marker had while it was
-	// Claude-specific.
-	//
-	// TRANSITIONAL — remove one release after every runner is upgraded.
-	// Readers must accept BOTH: a control plane sending the new name to a
-	// runner that only knows the old one would silently stop engaging
-	// subscription auth and quietly fall back to the API key — metered billing,
-	// no error, tasks still passing. Accepting both costs one map lookup and
-	// removes the coordinated-deploy requirement entirely.
-	EnvAgentAuthModeLegacy = "CLAUDE_AUTH_MODE"
-
-	// SubscriptionAuthModeValue is what EnvAgentAuthMode is set to. Any other
-	// value means "not subscription mode" — the comparison is exact, so a
-	// near-miss must not engage subscription auth.
-	SubscriptionAuthModeValue = "subscription"
-
-	// EnvBedrockMode marks an org as reaching models through AWS Bedrock, and
-	// tells the runner to assume dr-bedrock-role and inject short-lived
-	// credentials at spawn.
-	//
-	// It does double duty: claude-code reads this exact variable as its own
-	// Bedrock switch, which is why the runner keeps it for claude-code and
-	// strips it for every other agent — the name is misleading for opencode,
-	// which cannot use it.
+	// The runner WRITES it (see ApplyBedrockMode); nothing on our side reads it
+	// back. Derive from Provider instead.
 	EnvBedrockMode = "CLAUDE_CODE_USE_BEDROCK"
 
 	// BedrockModeValue is what EnvBedrockMode is set to.
 	BedrockModeValue = "1"
 )
 
-// IsSubscriptionAuthMode reports whether an injected env bundle marks
-// subscription auth. Provided so callers compare through one place rather than
-// each writing their own string comparison against the value above.
-func IsSubscriptionAuthMode(env map[string]string) bool {
-	if env[EnvAgentAuthMode] == SubscriptionAuthModeValue {
-		return true
-	}
-	// Legacy name, for jobs created before the rename or picked up by a runner
-	// mid-upgrade. Drop with EnvAgentAuthModeLegacy.
-	return env[EnvAgentAuthModeLegacy] == SubscriptionAuthModeValue
-}
-
-// ConsumeSubscriptionAuthMode reports whether env marks subscription auth and
-// removes the marker, so it never reaches the agent container. It is our
-// control-plane signal, not a CLI's — the runner acts on it by injecting the
-// OAuth token, and the CLI has no use for it.
+// ApplyBedrockMode sets claude-code's Bedrock switch when — and only when — the
+// org's provider routes through Bedrock AND the agent is claude-code. No other
+// agent understands this variable: codex ignores it, and opencode selects
+// Bedrock through its own "amazon-bedrock/…" model id (see OpencodeModelID).
 //
-// Detect-and-strip is ONE call on purpose. Two accepted names means a
-// hand-written `delete` eventually removes one and leaks the other, and a
-// leaked marker is invisible: the task runs fine, the variable is just sitting
-// in the container. Callers that only want to test the bundle without mutating
-// it should use IsSubscriptionAuthMode.
-func ConsumeSubscriptionAuthMode(env map[string]string) bool {
-	on := IsSubscriptionAuthMode(env)
-	// Unconditional: a marker set to some other value is still ours, and still
-	// must not reach the container.
-	delete(env, EnvAgentAuthMode)
-	delete(env, EnvAgentAuthModeLegacy)
-	return on
-}
-
-// IsBedrockMode reports whether an injected env bundle marks Bedrock.
-func IsBedrockMode(env map[string]string) bool {
-	return env[EnvBedrockMode] == BedrockModeValue
+// Write-if-needed, deliberately, rather than the strip-if-wrong-agent it
+// replaces. Removing a variable that should not be there fails open — miss one
+// path and it leaks into the container; adding one only where it belongs cannot
+// leak at all.
+func ApplyBedrockMode(env map[string]string, p Provider, agentType AgentType) {
+	if p == AWSBedrock && agentType == ClaudeCode {
+		env[EnvBedrockMode] = BedrockModeValue
+	}
 }
