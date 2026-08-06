@@ -12,7 +12,10 @@
 // deployment-runner for what the alternative looks like.
 package llm_provider_enums
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // Provider identifies WHOSE models are being called and over which API.
 //
@@ -21,8 +24,6 @@ import "fmt"
 // from kit/enums/claude_auth_enums with its numbering intact precisely so no
 // data migration was needed; reordering for tidiness would silently
 // reinterpret every existing org's credential configuration. Append only,
-// before MaxProvider.
-//
 // ⚠️ NOT EVERY VALUE IS PERSISTED. 1-4 appear in ClaudeAuth.Provider.
 // OpenAIDirect does not appear anywhere: OpenAIAuth has no Provider field and
 // infers its provider from the presence of an API key, so nothing writes 5.
@@ -43,19 +44,26 @@ import "fmt"
 type Provider uint
 
 const (
-	AnthropicDirect Provider = iota + 1 // 1 — Anthropic API key
-	AWSBedrock                          // 2 — runner-assumed IAM role, no stored secret
-	GoogleVertex                        // 3 — reserved, not wired
+	// ⚠️ VALUES ARE EXPLICIT AND PERMANENT. Each number is what sits in
+	// LLMConfig documents, so a value belongs to its provider forever — never
+	// reuse or renumber one, and never let a value depend on declaration order.
+	// This used to be `iota + 1`, which made every number a function of the
+	// lines above it: deleting or reordering a single constant silently
+	// reinterpreted stored documents as a different provider.
+	AnthropicDirect Provider = 1 // Anthropic API key
+	AWSBedrock      Provider = 2 // runner-assumed IAM role, no stored secret
+	// GoogleVertex is RESERVED, not offered. It is withheld by the catalogue
+	// (see ConfigurableProviders) rather than deleted, because 3 must stay
+	// spoken for.
+	GoogleVertex Provider = 3
 	// AnthropicSubscription is the customer's own Claude Code subscription
 	// (Pro/Max) OAuth token. No credential is held control-plane-side: the
 	// token lives only in the customer's own AWS Secrets Manager and is read
 	// by the runner at agentbox spawn. claude-code only — the runner refuses
 	// it for other harnesses, which agentTypeToProviders below encodes.
-	AnthropicSubscription // 4
+	AnthropicSubscription Provider = 4
 	// OpenAIDirect is catalogue-only; see the note above.
-	OpenAIDirect // 5
-
-	MaxProvider // always add providers before MaxProvider
+	OpenAIDirect Provider = 5
 )
 
 // providerToString values are USER-VISIBLE. They are surfaced as
@@ -81,8 +89,28 @@ func (p Provider) IsZero() bool {
 
 // IsValid reports whether p names a declared provider. The zero value means
 // "unconfigured" and is not valid.
+// AllProviders returns every provider this build knows, in numeric order —
+// reserved ones included. Callers offering a CHOICE want ConfigurableProviders
+// instead; this is for exhaustive sweeps (validation tables, tests) that must
+// not silently skip a provider.
+//
+// Derived from providerToString so there is no second list to fall out of sync,
+// and sorted because map iteration is random and callers compare output.
+func AllProviders() []Provider {
+	out := make([]Provider, 0, len(providerToString))
+	for p := range providerToString {
+		out = append(out, p)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
+}
+
 func (p Provider) IsValid() bool {
-	return p > 0 && p < MaxProvider
+	// Membership, not a range check. With explicit values there is no
+	// contiguity to lean on, and a range would call a reserved gap valid while
+	// a forgotten sentinel bump would call a real provider invalid.
+	_, ok := providerToString[p]
+	return ok
 }
 
 // AuthMode returns HOW this provider is authenticated to.

@@ -74,7 +74,7 @@ var modelToProviders = map[Model][]Provider{
 // though no model above is served by it yet — the intersection keeps that from
 // ever being offered.
 var agentTypeToProviders = map[AgentType][]Provider{
-	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock, GoogleVertex},
+	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	Codex:      {OpenAIDirect},
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
 }
@@ -176,4 +176,39 @@ func OpencodeModelID(modelID string, p Provider) string {
 		return ""
 	}
 	return name + "/" + modelID
+}
+
+// ConfigurableProviders returns every provider an org can actually configure,
+// in enum order.
+//
+// DERIVED, not a second list: a provider is configurable exactly when some
+// agent can use it. That makes the catalogue the only place a provider is
+// switched on, so a reserved-but-unbuilt one (GoogleVertex) cannot be offered
+// by the settings UI or accepted by the API without someone first adding it to
+// a real agent — rather than each caller carrying its own reject list that
+// drifts.
+func ConfigurableProviders() []Provider {
+	offered := map[Provider]bool{}
+	for _, providers := range agentTypeToProviders {
+		for _, p := range providers {
+			offered[p] = true
+		}
+	}
+	var out []Provider
+	for _, p := range AllProviders() {
+		if offered[p] {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// IsConfigurable reports whether an org can configure this provider.
+func (p Provider) IsConfigurable() bool {
+	for _, c := range ConfigurableProviders() {
+		if c == p {
+			return true
+		}
+	}
+	return false
 }
