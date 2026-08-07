@@ -66,3 +66,38 @@ func ResolveAgentType(s string) (AgentType, error) {
 	}
 	return 0, fmt.Errorf("unknown agent harness %q", s)
 }
+
+// agentTypeToDisplayName is what a human calls the agent. Separate from
+// String(), which is the AGENT_TYPE wire value agentbox switches on — letting a
+// copy edit change what gets sent to a container is the class of bug this
+// package exists to end.
+var agentTypeToDisplayName = map[AgentType]string{
+	ClaudeCode: "Claude Code",
+	Codex:      "Codex",
+	Opencode:   "opencode",
+}
+
+// DisplayName returns the human-facing name, falling back to the wire value so
+// an unnamed agent still renders as something.
+func (h AgentType) DisplayName() string {
+	if name, ok := agentTypeToDisplayName[h]; ok {
+		return name
+	}
+	return h.String()
+}
+
+// batchOnlyAgentTypes cannot run an interactive Assistant session.
+//
+// A capability of the AGENT, so it belongs here rather than in whichever client
+// renders a session picker. opencode has no interactive mode in agentbox: it
+// runs a batch invocation and exits, so a session would have nothing to talk
+// to.
+var batchOnlyAgentTypes = map[AgentType]bool{
+	Opencode: true,
+}
+
+// SupportsInteractiveSession reports whether this agent can back an Assistant
+// session, as opposed to batch Task Steps only.
+func (h AgentType) SupportsInteractiveSession() bool {
+	return !batchOnlyAgentTypes[h]
+}
