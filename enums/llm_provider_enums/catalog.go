@@ -59,21 +59,37 @@ var modelToProviders = map[Model][]Provider{
 	NovaProV1: {AWSBedrock},
 }
 
-// agentTypeToProviders lists which providers each harness can authenticate to.
+// agentProviderCapabilities lists which provider APIs each CLI can talk to.
 //
-// The two constraints worth knowing, both enforced in deployment-runner today
-// and previously only discoverable by reading it:
+// AN INDEPENDENT AXIS, not derivable from the models. It is tempting to compute
+// it — an agent could just inherit whatever its models reach — and today that
+// would even produce the right answer, because no agent's model list overlaps a
+// provider it cannot use. That is a COINCIDENCE, and deriving would encode it
+// as a rule: adding one Bedrock-served model to codex would silently grant
+// codex Bedrock, which it has no path to at all.
 //
-//   - Codex is OpenAI-only. It has no Bedrock path at all.
-//   - Only claude-code may use AnthropicSubscription. maybeApplyClaudeSubscriptionAuth
-//     returns early for any other AGENT_TYPE, because a genuine `claude` CLI is
-//     what passes Anthropic's client-identity check; routing a subscription
-//     token through another agent is prohibited, not merely unsupported.
+// The axis is TRANSPORT: which endpoint the CLI knows how to authenticate to
+// and speak. Model availability is the other axis, and ProvidersFor intersects
+// them. Keeping them apart matters because they genuinely disagree:
 //
-// GoogleVertex is listed for claude-code because the harness supports it, even
-// though no model above is served by it yet — the intersection keeps that from
-// ever being offered.
-var agentTypeToProviders = map[AgentType][]Provider{
+//   - Codex is OpenAI-only, and NOT because Bedrock lacks OpenAI models —
+//     Bedrock does host some (the open-weight gpt-oss family). Our driver runs
+//     `codex login --with-api-key` and the CLI authenticates against
+//     wss://api.openai.com/v1/responses. Bedrock is not an OpenAI-compatible
+//     endpoint, so no model on it is reachable, whoever publishes the model.
+//   - opencode reaches Bedrock through its own "amazon-bedrock/…" model id, and
+//     claude-code through CLAUDE_CODE_USE_BEDROCK. Same provider, three
+//     different answers, none of them a property of the model.
+//   - opencode is absent from AnthropicSubscription for a POLICY reason, not a
+//     transport one: it could speak the API perfectly well, but a Pro/Max token
+//     is validated against Anthropic's client-identity check and routing one
+//     through a third-party agent is prohibited. Sonnet IS served by a
+//     subscription and opencode DOES run Sonnet, so the model axis would allow
+//     it. TestCatalog_SubscriptionIsClaudeCodeOnly is the guard.
+//
+// That last line is the disproof of "providers depend only on models": opencode
+// and codex can support the SAME model on the SAME provider and still differ.
+var agentProviderCapabilities = map[AgentType][]Provider{
 	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	Codex:      {OpenAIDirect},
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
@@ -82,8 +98,9 @@ var agentTypeToProviders = map[AgentType][]Provider{
 // Models returns the models this harness can run.
 func (h AgentType) Models() []Model { return agentTypeToModels[h] }
 
-// Providers returns the providers this harness can authenticate to.
-func (h AgentType) Providers() []Provider { return agentTypeToProviders[h] }
+// Providers returns the provider APIs this harness can talk to. Order carries
+// NO preference — see PreferredProvider.
+func (h AgentType) Providers() []Provider { return agentProviderCapabilities[h] }
 
 // Providers returns every provider that can serve this model, ignoring which
 // harness is asking. Use ProvidersFor when a harness is known.
@@ -111,8 +128,9 @@ func ProvidersFor(h AgentType, m Model) []Provider {
 	if !h.Supports(m) {
 		return nil
 	}
-	reachable := make(map[Provider]bool, len(agentTypeToProviders[h]))
-	for _, p := range agentTypeToProviders[h] {
+	agentProviders := h.Providers()
+	reachable := make(map[Provider]bool, len(agentProviders))
+	for _, p := range agentProviders {
 		reachable[p] = true
 	}
 	var out []Provider
@@ -189,7 +207,8 @@ func OpencodeModelID(modelID string, p Provider) string {
 // drifts.
 func ConfigurableProviders() []Provider {
 	offered := map[Provider]bool{}
-	for _, providers := range agentTypeToProviders {
+	for agentType := range agentTypeToModels {
+		providers := agentType.Providers()
 		for _, p := range providers {
 			offered[p] = true
 		}
@@ -211,4 +230,43 @@ func (p Provider) IsConfigurable() bool {
 		}
 	}
 	return false
+}
+
+// PreferredProvider returns which of these candidates should serve a Job, given
+// what the org has configured.
+//
+// EXISTS SO PREFERENCE IS NOT LIST ORDER. agentTypeToProviders answers
+// MEMBERSHIP — which providers can serve an agent — and a list literal's order
+// is the kind of thing someone tidies alphabetically. Deciding billing as a
+// side effect of that is indefensible, so the rule lives here, named, with its
+// reason attached.
+//
+// The rule is: prefer a credential the org has ALREADY PAID FOR. A subscription
+// is a flat fee whether or not we use it, so reaching for a metered API key
+// instead charges the org twice — silently, since nothing fails. Everything
+// else ties and falls back to catalogue order, which is arbitrary but
+// deterministic; no defensible reason ranks an API key against a cloud role.
+//
+// INTERIM. When per-model routing lands, an org's own configured order replaces
+// this and the guessing stops.
+func PreferredProvider(candidates []Provider, isConfigured func(Provider) bool) (Provider, bool) {
+	best, found := Provider(0), false
+	for _, p := range candidates {
+		if !isConfigured(p) {
+			continue
+		}
+		if !found || preferenceRank(p) < preferenceRank(best) {
+			best, found = p, true
+		}
+	}
+	return best, found
+}
+
+// preferenceRank orders providers by whether the org is already paying for them
+// regardless of use. Lower wins; ties keep the caller's order.
+func preferenceRank(p Provider) int {
+	if p.AuthMode() == AuthSubscription {
+		return 0
+	}
+	return 1
 }

@@ -84,14 +84,26 @@ func ClaudeCodeUsesBedrock(p Provider, agentType AgentType) bool {
 	return p == AWSBedrock && agentType == ClaudeCode
 }
 
-// ModelEnvVar returns the env var this spawn's agent reads its model from.
+// ApplyModelEnv writes the resolved model id where this spawn's agent will read
+// it.
 //
-// Exists so no caller writes that branch itself. It is the same fact as
-// ApplyClaudeCodeUseBedrock, and the two cannot disagree because both derive
-// from ClaudeCodeUsesBedrock.
-func ModelEnvVar(p Provider, agentType AgentType) string {
+// EnvModel ALWAYS. agentbox turns it into --model for every agent it spawns, so
+// whatever sits there is what the CLI is actually told to run.
+//
+// EnvClaudeCodeBedrockModel ADDITIONALLY, for claude-code in Bedrock mode — an
+// extra input, never an alternative. This replaces a ModelEnvVar that returned
+// one OR the other, which looked tidy and was wrong: writing only
+// ANTHROPIC_MODEL left EnvModel holding the LOGICAL id, agentbox passed that as
+// --model, and a flag carrying an id Bedrock cannot resolve overrode the
+// inference profile discovery had just found. The whole resolution step was
+// dead weight on the one path that needs it most.
+//
+// Both writes are the same value on purpose. Which agents get the second one is
+// ClaudeCodeUsesBedrock's answer, the same one behind ApplyClaudeCodeUseBedrock,
+// so an agent cannot be put in Bedrock mode and pointed at a different variable.
+func ApplyModelEnv(env map[string]string, modelID string, p Provider, agentType AgentType) {
+	env[EnvModel] = modelID
 	if ClaudeCodeUsesBedrock(p, agentType) {
-		return EnvClaudeCodeBedrockModel
+		env[EnvClaudeCodeBedrockModel] = modelID
 	}
-	return EnvModel
 }
