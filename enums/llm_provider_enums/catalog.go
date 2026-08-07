@@ -80,6 +80,12 @@ var modelToProviders = map[Model][]Provider{
 //   - opencode reaches Bedrock through its own "amazon-bedrock/…" model id, and
 //     claude-code through CLAUDE_CODE_USE_BEDROCK. Same provider, three
 //     different answers, none of them a property of the model.
+//   - opencode is absent from AnthropicSubscription for a POLICY reason, not a
+//     transport one: it could speak the API perfectly well, but a Pro/Max token
+//     is validated against Anthropic's client-identity check and routing one
+//     through a third-party agent is prohibited. Sonnet IS served by a
+//     subscription and opencode DOES run Sonnet, so the model axis would allow
+//     it. TestCatalog_SubscriptionIsClaudeCodeOnly is the guard.
 //
 // That last line is the disproof of "providers depend only on models": opencode
 // and codex can support the SAME model on the SAME provider and still differ.
@@ -87,23 +93,6 @@ var agentProviderCapabilities = map[AgentType][]Provider{
 	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	Codex:      {OpenAIDirect},
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
-}
-
-// agentProviderExclusions names the gaps: a provider that serves one of an
-// agent's models, which the agent still may not use.
-//
-// Every such gap must be listed. A capability table and a model table can drift
-// apart silently — a provider quietly missing from an agent looks identical to
-// one deliberately withheld — so the test pairs them and fails on any gap not
-// named here.
-var agentProviderExclusions = map[AgentType][]Provider{
-	// Subscription auth is locked to the genuine `claude` CLI. Sonnet IS served
-	// by a subscription and opencode DOES run Sonnet, so the model axis says
-	// opencode could reach it. Anthropic's client-identity check is what a
-	// subscription token is validated against, and routing Pro/Max credentials
-	// through a third-party agent is PROHIBITED, not merely unsupported.
-	// deployment-runner enforces the same rule at spawn.
-	Opencode: {AnthropicSubscription},
 }
 
 // Models returns the models this harness can run.
