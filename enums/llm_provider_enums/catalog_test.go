@@ -626,25 +626,55 @@ func TestAllProviders_CoversEveryDeclaredProviderInOrder(t *testing.T) {
 // The invariant this pair exists to hold: an agent is put into Bedrock mode by
 // exactly the same rule that decides where it reads its model. Split across two
 // repos it could not be tested at all, and it had already drifted.
-func TestModelEnvVar_AgreesWithTheBedrockSwitch(t *testing.T) {
+func TestApplyModelEnv_AgreesWithTheBedrockSwitch(t *testing.T) {
+	const id = "eu.anthropic.claude-sonnet-4-6-20260101-v1:0"
 	for _, p := range AllProviders() {
 		for _, agentType := range []AgentType{ClaudeCode, Codex, Opencode} {
-			env := map[string]string{}
-			ApplyClaudeCodeUseBedrock(env, p, agentType)
-			inBedrockMode := env[EnvClaudeCodeUseBedrock] == ClaudeCodeUseBedrockValue
-			readsAnthropicModel := ModelEnvVar(p, agentType) == EnvClaudeCodeBedrockModel
+			switchEnv := map[string]string{}
+			ApplyClaudeCodeUseBedrock(switchEnv, p, agentType)
+			inBedrockMode := switchEnv[EnvClaudeCodeUseBedrock] == ClaudeCodeUseBedrockValue
+
+			modelEnv := map[string]string{}
+			ApplyModelEnv(modelEnv, id, p, agentType)
+			_, readsAnthropicModel := modelEnv[EnvClaudeCodeBedrockModel]
+
 			if inBedrockMode != readsAnthropicModel {
-				t.Errorf("%v/%v: Bedrock mode = %v but reads %s — an agent in the mode must read ANTHROPIC_MODEL, and one reading it must be in the mode",
-					p, agentType, inBedrockMode, ModelEnvVar(p, agentType))
+				t.Errorf("%v/%v: Bedrock mode = %v but ANTHROPIC_MODEL set = %v — an agent in the mode must be given it, and one given it must be in the mode",
+					p, agentType, inBedrockMode, readsAnthropicModel)
+			}
+
+			// EnvModel is written for EVERY spawn. agentbox turns it into
+			// --model, so leaving it holding the logical id means a flag that
+			// overrides whatever ANTHROPIC_MODEL was resolved to.
+			if modelEnv[EnvModel] != id {
+				t.Errorf("%v/%v: MODEL = %q, want the resolved id — agentbox passes it as --model", p, agentType, modelEnv[EnvModel])
+			}
+			if readsAnthropicModel && modelEnv[EnvClaudeCodeBedrockModel] != modelEnv[EnvModel] {
+				t.Errorf("%v/%v: MODEL and ANTHROPIC_MODEL disagree (%q vs %q)", p, agentType, modelEnv[EnvModel], modelEnv[EnvClaudeCodeBedrockModel])
 			}
 		}
 	}
-	// The concrete case that was wrong: codex on Bedrock reads the generic var.
-	if got := ModelEnvVar(AWSBedrock, Codex); got != EnvModel {
-		t.Errorf("codex on Bedrock reads %s; only claude-code reads ANTHROPIC_MODEL", got)
+}
+
+// The order is the preference the control plane applies, so it is policy, not
+// presentation. Direct ahead of subscription would bill a subscribed org
+// metered while its subscription sat unused — silent, and expensive in the
+// direction that does not fail.
+func TestClaudeCodeProviderOrder_PrefersTheSubscription(t *testing.T) {
+	order := agentTypeToProviders[ClaudeCode]
+	sub, direct := -1, -1
+	for i, p := range order {
+		switch p {
+		case AnthropicSubscription:
+			sub = i
+		case AnthropicDirect:
+			direct = i
+		}
 	}
-	// And opencode, which reaches Bedrock through its model id, not a switch.
-	if got := ModelEnvVar(AWSBedrock, Opencode); got != EnvModel {
-		t.Errorf("opencode on Bedrock reads %s, want %s", got, EnvModel)
+	if sub == -1 || direct == -1 {
+		t.Fatalf("claude-code must offer both Anthropic paths; got %v", order)
+	}
+	if sub > direct {
+		t.Errorf("AnthropicDirect (%d) precedes AnthropicSubscription (%d); a subscribed org would be billed metered", direct, sub)
 	}
 }

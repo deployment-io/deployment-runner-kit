@@ -74,7 +74,12 @@ var modelToProviders = map[Model][]Provider{
 // though no model above is served by it yet — the intersection keeps that from
 // ever being offered.
 var agentTypeToProviders = map[AgentType][]Provider{
-	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	// ORDER IS PREFERENCE — the control plane takes the first entry an org has
+	// configured. Subscription leads deliberately: an org that set one up chose
+	// a flat fee, and picking its API key instead would bill it metered while
+	// the subscription sat unused. Silent, and expensive in the direction that
+	// does not fail. Until per-model routing lands, this order IS the policy.
+	ClaudeCode: {AnthropicSubscription, AnthropicDirect, AWSBedrock},
 	Codex:      {OpenAIDirect},
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
 }
