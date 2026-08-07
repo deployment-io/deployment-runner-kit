@@ -59,31 +59,58 @@ var modelToProviders = map[Model][]Provider{
 	NovaProV1: {AWSBedrock},
 }
 
-// agentTypeToProviders lists which providers each harness can authenticate to.
+// agentProviderExclusions lists providers an agent CANNOT use even though one
+// of its models is served there.
 //
-// The two constraints worth knowing, both enforced in deployment-runner today
-// and previously only discoverable by reading it:
+// AN AGENT IS OTHERWISE INDEPENDENT OF PROVIDERS. Which providers can serve a
+// model is a model fact; an agent inherits whatever its models reach. That
+// makes AgentType.Providers a DERIVATION rather than a third hand-maintained
+// table which could silently disagree with the other two — adding a model to
+// an agent widens its providers automatically, and no list can drift.
 //
-//   - Codex is OpenAI-only. It has no Bedrock path at all.
-//   - Only claude-code may use AnthropicSubscription. maybeApplyClaudeSubscriptionAuth
-//     returns early for any other AGENT_TYPE, because a genuine `claude` CLI is
-//     what passes Anthropic's client-identity check; routing a subscription
-//     token through another agent is prohibited, not merely unsupported.
-//
-// GoogleVertex is listed for claude-code because the harness supports it, even
-// though no model above is served by it yet — the intersection keeps that from
-// ever being offered.
-var agentTypeToProviders = map[AgentType][]Provider{
-	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
-	Codex:      {OpenAIDirect},
-	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
+// What remains here is the residue that genuinely is an agent×provider fact:
+// nothing about a MODEL explains it, so the model axis cannot carry it.
+var agentProviderExclusions = map[AgentType][]Provider{
+	// Subscription auth is locked to the genuine `claude` CLI. Sonnet is served
+	// by a subscription, so the model axis says opencode could reach it — but
+	// Anthropic's client-identity check is what a subscription token is
+	// validated against, and routing Pro/Max credentials through a third-party
+	// agent is PROHIBITED, not merely unsupported. deployment-runner enforces
+	// the same rule at spawn.
+	Opencode: {AnthropicSubscription},
+	// Codex needs no entry: its models are OpenAI-only, so the derivation
+	// already yields OpenAIDirect alone. Listing exclusions it does not need
+	// would be re-stating the model axis here.
 }
 
 // Models returns the models this harness can run.
 func (h AgentType) Models() []Model { return agentTypeToModels[h] }
 
-// Providers returns the providers this harness can authenticate to.
-func (h AgentType) Providers() []Provider { return agentTypeToProviders[h] }
+// Providers returns the providers this harness can authenticate to: every
+// provider serving any model it runs, minus the exclusions above. Enum order,
+// so callers get a stable list — order carries NO preference (see
+// PreferredProvider).
+func (h AgentType) Providers() []Provider {
+	excluded := map[Provider]bool{}
+	for _, p := range agentProviderExclusions[h] {
+		excluded[p] = true
+	}
+	reachable := map[Provider]bool{}
+	for _, m := range agentTypeToModels[h] {
+		for _, p := range modelToProviders[m] {
+			if !excluded[p] {
+				reachable[p] = true
+			}
+		}
+	}
+	var out []Provider
+	for _, p := range AllProviders() {
+		if reachable[p] {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // Providers returns every provider that can serve this model, ignoring which
 // harness is asking. Use ProvidersFor when a harness is known.
@@ -111,8 +138,9 @@ func ProvidersFor(h AgentType, m Model) []Provider {
 	if !h.Supports(m) {
 		return nil
 	}
-	reachable := make(map[Provider]bool, len(agentTypeToProviders[h]))
-	for _, p := range agentTypeToProviders[h] {
+	agentProviders := h.Providers()
+	reachable := make(map[Provider]bool, len(agentProviders))
+	for _, p := range agentProviders {
 		reachable[p] = true
 	}
 	var out []Provider
@@ -189,7 +217,8 @@ func OpencodeModelID(modelID string, p Provider) string {
 // drifts.
 func ConfigurableProviders() []Provider {
 	offered := map[Provider]bool{}
-	for _, providers := range agentTypeToProviders {
+	for agentType := range agentTypeToModels {
+		providers := agentType.Providers()
 		for _, p := range providers {
 			offered[p] = true
 		}

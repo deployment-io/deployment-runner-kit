@@ -582,7 +582,8 @@ func TestConfigurableProviders_ExcludesReservedOnes(t *testing.T) {
 	}
 	// Everything an agent lists must be configurable, or an org could pick a
 	// model it is then unable to run.
-	for agentType, providers := range agentTypeToProviders {
+	for agentType := range agentTypeToModels {
+		providers := agentType.Providers()
 		for _, p := range providers {
 			if !p.IsConfigurable() {
 				t.Errorf("%v lists %v, which is not configurable", agentType, p)
@@ -690,4 +691,49 @@ func TestPreferredProvider_PrefersWhatTheOrgAlreadyPaysFor(t *testing.T) {
 	if _, ok := PreferredProvider(worstOrder, configured()); ok {
 		t.Error("nothing configured must report no provider, not a guess")
 	}
+}
+
+// An agent is INDEPENDENT of providers except where a rule says otherwise:
+// which providers serve a model is a model fact, and an agent inherits whatever
+// its models reach. This pins that derivation, so a provider can never appear
+// against an agent without a model to justify it — the drift a third
+// hand-maintained table invited.
+func TestAgentProviders_AreDerivedFromModelsMinusNamedExclusions(t *testing.T) {
+	for agentType, models := range agentTypeToModels {
+		reachable := map[Provider]bool{}
+		for _, m := range models {
+			for _, p := range modelToProviders[m] {
+				reachable[p] = true
+			}
+		}
+		excluded := map[Provider]bool{}
+		for _, p := range agentProviderExclusions[agentType] {
+			if !reachable[p] {
+				t.Errorf("%v excludes %v, which none of its models reach — the exclusion is dead", agentType, p)
+			}
+			excluded[p] = true
+		}
+		for _, p := range agentType.Providers() {
+			if !reachable[p] {
+				t.Errorf("%v lists %v with no model to justify it", agentType, p)
+			}
+			if excluded[p] {
+				t.Errorf("%v lists %v despite excluding it", agentType, p)
+			}
+		}
+		for p := range reachable {
+			if !excluded[p] && !slicesContain(agentType.Providers(), p) {
+				t.Errorf("%v can reach %v through a model but does not list it", agentType, p)
+			}
+		}
+	}
+}
+
+func slicesContain(ps []Provider, want Provider) bool {
+	for _, p := range ps {
+		if p == want {
+			return true
+		}
+	}
+	return false
 }
