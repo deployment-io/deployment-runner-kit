@@ -754,3 +754,29 @@ func TestModelsFor_OffersOnlyWhatTheOrgCanServe(t *testing.T) {
 		t.Errorf("an unconfigured org was offered %v", got)
 	}
 }
+
+// An agent with no display name renders as its wire value — legible, but it
+// means AGENT_TYPE leaked into the UI.
+func TestAgentType_EveryAgentHasADisplayName(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		if _, named := agentTypeToDisplayName[h]; !named {
+			t.Errorf("%v has no display name", h)
+		}
+	}
+	// At least one agent must back interactive sessions, or the Assistant has
+	// nothing to offer.
+	interactive := 0
+	for _, h := range AllAgentTypes() {
+		if h.SupportsInteractiveSession() {
+			interactive++
+		}
+	}
+	if interactive == 0 {
+		t.Error("no agent supports interactive sessions; the Assistant picker would be empty")
+	}
+	// opencode is batch-only: agentbox runs it and it exits, so a session would
+	// have nothing to talk to.
+	if Opencode.SupportsInteractiveSession() {
+		t.Error("opencode has no interactive mode in agentbox")
+	}
+}
