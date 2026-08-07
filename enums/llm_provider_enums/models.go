@@ -197,3 +197,33 @@ func (m Model) IDFor(p Provider) string {
 	}
 	return m.String()
 }
+
+// modelToDisplayName is what a human calls the model, without its vendor —
+// "Sonnet 4.6", not "claude-sonnet-4-6" and not "Anthropic Sonnet 4.6".
+//
+// Separate from String(), which is the WIRE id and must never move: a copy edit
+// to a label would otherwise change what gets sent to a provider. Vendor is
+// separate too, so a caller composes "Anthropic · Sonnet 4.6" or groups by
+// vendor without this map having to pick one presentation.
+//
+// Lived in the dashboard until now, which meant a model added here was invisible
+// there until someone remembered to mirror it — and mirrored ids drifted from
+// the catalogue three times.
+var modelToDisplayName = map[Model]string{
+	ClaudeHaiku45:  "Haiku 4.5",
+	ClaudeSonnet46: "Sonnet 4.6",
+	ClaudeOpus48:   "Opus 4.8",
+	Gpt55:          "GPT-5.5",
+	Gpt53Codex:     "GPT-5.3 Codex",
+	Gpt54:          "GPT-5.4",
+	NovaProV1:      "Nova Pro",
+}
+
+// DisplayName returns the human-facing name, falling back to the wire id so an
+// unnamed model still renders as something rather than blank.
+func (m Model) DisplayName() string {
+	if name, ok := modelToDisplayName[m]; ok {
+		return name
+	}
+	return m.String()
+}
