@@ -656,25 +656,38 @@ func TestApplyModelEnv_AgreesWithTheBedrockSwitch(t *testing.T) {
 	}
 }
 
-// The order is the preference the control plane applies, so it is policy, not
-// presentation. Direct ahead of subscription would bill a subscribed org
-// metered while its subscription sat unused — silent, and expensive in the
-// direction that does not fail.
-func TestClaudeCodeProviderOrder_PrefersTheSubscription(t *testing.T) {
-	order := agentTypeToProviders[ClaudeCode]
-	sub, direct := -1, -1
-	for i, p := range order {
-		switch p {
-		case AnthropicSubscription:
-			sub = i
-		case AnthropicDirect:
-			direct = i
+// Preference must NOT come from agentTypeToProviders' order — that list answers
+// membership, and someone reordering it must not change who gets billed. So
+// this passes the candidates in the WORST order and still expects the
+// subscription to win.
+func TestPreferredProvider_PrefersWhatTheOrgAlreadyPaysFor(t *testing.T) {
+	configured := func(want ...Provider) func(Provider) bool {
+		set := map[Provider]bool{}
+		for _, p := range want {
+			set[p] = true
 		}
+		return func(p Provider) bool { return set[p] }
 	}
-	if sub == -1 || direct == -1 {
-		t.Fatalf("claude-code must offer both Anthropic paths; got %v", order)
+	worstOrder := []Provider{AnthropicDirect, AWSBedrock, AnthropicSubscription}
+
+	got, ok := PreferredProvider(worstOrder, configured(AnthropicDirect, AnthropicSubscription))
+	if !ok || got != AnthropicSubscription {
+		t.Errorf("PreferredProvider = %v (%v); a subscribed org must not be billed metered alongside its subscription", got, ok)
 	}
-	if sub > direct {
-		t.Errorf("AnthropicDirect (%d) precedes AnthropicSubscription (%d); a subscribed org would be billed metered", direct, sub)
+
+	// With no subscription configured, the first configured candidate wins —
+	// arbitrary but deterministic, since nothing defensibly ranks an API key
+	// against a cloud role.
+	got, ok = PreferredProvider(worstOrder, configured(AWSBedrock, AnthropicDirect))
+	if !ok || got != AnthropicDirect {
+		t.Errorf("PreferredProvider = %v (%v), want the first configured candidate", got, ok)
+	}
+
+	// A candidate the org has NOT configured is never chosen.
+	if got, ok := PreferredProvider(worstOrder, configured(AWSBedrock)); !ok || got != AWSBedrock {
+		t.Errorf("PreferredProvider = %v (%v), want the only configured candidate", got, ok)
+	}
+	if _, ok := PreferredProvider(worstOrder, configured()); ok {
+		t.Error("nothing configured must report no provider, not a guess")
 	}
 }

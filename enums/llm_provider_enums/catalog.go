@@ -74,12 +74,7 @@ var modelToProviders = map[Model][]Provider{
 // though no model above is served by it yet — the intersection keeps that from
 // ever being offered.
 var agentTypeToProviders = map[AgentType][]Provider{
-	// ORDER IS PREFERENCE — the control plane takes the first entry an org has
-	// configured. Subscription leads deliberately: an org that set one up chose
-	// a flat fee, and picking its API key instead would bill it metered while
-	// the subscription sat unused. Silent, and expensive in the direction that
-	// does not fail. Until per-model routing lands, this order IS the policy.
-	ClaudeCode: {AnthropicSubscription, AnthropicDirect, AWSBedrock},
+	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	Codex:      {OpenAIDirect},
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
 }
@@ -216,4 +211,43 @@ func (p Provider) IsConfigurable() bool {
 		}
 	}
 	return false
+}
+
+// PreferredProvider returns which of these candidates should serve a Job, given
+// what the org has configured.
+//
+// EXISTS SO PREFERENCE IS NOT LIST ORDER. agentTypeToProviders answers
+// MEMBERSHIP — which providers can serve an agent — and a list literal's order
+// is the kind of thing someone tidies alphabetically. Deciding billing as a
+// side effect of that is indefensible, so the rule lives here, named, with its
+// reason attached.
+//
+// The rule is: prefer a credential the org has ALREADY PAID FOR. A subscription
+// is a flat fee whether or not we use it, so reaching for a metered API key
+// instead charges the org twice — silently, since nothing fails. Everything
+// else ties and falls back to catalogue order, which is arbitrary but
+// deterministic; no defensible reason ranks an API key against a cloud role.
+//
+// INTERIM. When per-model routing lands, an org's own configured order replaces
+// this and the guessing stops.
+func PreferredProvider(candidates []Provider, isConfigured func(Provider) bool) (Provider, bool) {
+	best, found := Provider(0), false
+	for _, p := range candidates {
+		if !isConfigured(p) {
+			continue
+		}
+		if !found || preferenceRank(p) < preferenceRank(best) {
+			best, found = p, true
+		}
+	}
+	return best, found
+}
+
+// preferenceRank orders providers by whether the org is already paying for them
+// regardless of use. Lower wins; ties keep the caller's order.
+func preferenceRank(p Provider) int {
+	if p.AuthMode() == AuthSubscription {
+		return 0
+	}
+	return 1
 }
