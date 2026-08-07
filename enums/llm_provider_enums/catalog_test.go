@@ -692,3 +692,65 @@ func TestPreferredProvider_PrefersWhatTheOrgAlreadyPaysFor(t *testing.T) {
 		t.Error("nothing configured must report no provider, not a guess")
 	}
 }
+
+// A model with no display name renders as its wire id — legible but wrong for a
+// picker, and the kind of gap nobody notices until a customer sees it.
+func TestModel_EveryCatalogueModelHasADisplayName(t *testing.T) {
+	for _, models := range agentTypeToModels {
+		for _, m := range models {
+			if _, named := modelToDisplayName[m]; !named {
+				t.Errorf("%v has no display name; a picker would show its wire id", m)
+			}
+			// The label must NOT be the wire id: they have different jobs, and
+			// letting them coincide invites someone to use one for the other.
+			if m.DisplayName() == m.String() {
+				t.Errorf("%v: display name equals the wire id %q", m, m.String())
+			}
+		}
+	}
+}
+
+// A default no picker can offer is worse than none: the UI preselects something
+// the org cannot run, and the first Task fails.
+func TestAgentType_DefaultModelIsOneItRuns(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		def := h.DefaultModel()
+		if def == 0 {
+			t.Errorf("%v has no default model", h)
+			continue
+		}
+		if !h.Supports(def) {
+			t.Errorf("%v defaults to %v, which it cannot run", h, def)
+		}
+	}
+}
+
+func TestModelsFor_OffersOnlyWhatTheOrgCanServe(t *testing.T) {
+	bedrockOnly := func(p Provider) bool { return p == AWSBedrock }
+	got := ModelsFor(Opencode, bedrockOnly)
+	names := map[Model]bool{}
+	for _, m := range got {
+		names[m] = true
+	}
+	// Nova is Bedrock-only, so a Bedrock org must see it.
+	if !names[NovaProV1] {
+		t.Errorf("opencode/Bedrock omits nova-pro-v1; got %v", got)
+	}
+	// Claude models are served by Bedrock too.
+	if !names[ClaudeSonnet46] {
+		t.Errorf("opencode/Bedrock omits claude-sonnet-4-6; got %v", got)
+	}
+	// GPT-5.5 is NOT on Bedrock — it is OpenAI's own model, so it must be
+	// withheld even though opencode can reach Bedrock perfectly well.
+	if names[Gpt55] {
+		t.Errorf("opencode/Bedrock offers gpt-5.5, which no Bedrock provider serves; got %v", got)
+	}
+	// Codex has no Bedrock transport at all, so nothing is offerable.
+	if got := ModelsFor(Codex, bedrockOnly); len(got) != 0 {
+		t.Errorf("codex on a Bedrock-only org offers %v, but it cannot reach Bedrock", got)
+	}
+	// Nothing configured offers nothing — never a fallback to "all models".
+	if got := ModelsFor(ClaudeCode, func(Provider) bool { return false }); len(got) != 0 {
+		t.Errorf("an unconfigured org was offered %v", got)
+	}
+}

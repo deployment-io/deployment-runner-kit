@@ -270,3 +270,56 @@ func preferenceRank(p Provider) int {
 	}
 	return 1
 }
+
+// agentTypeToDefaultModel is the model a picker should preselect.
+//
+// A product choice, so it lives beside the catalogue rather than in whichever
+// client renders the picker first — two clients would otherwise preselect
+// differently for the same agent.
+var agentTypeToDefaultModel = map[AgentType]Model{
+	// Anthropic's documented pick for agentic coding.
+	ClaudeCode: ClaudeOpus48,
+	// OpenAI's recommended default for Codex.
+	Codex: Gpt55,
+	// Balanced, and reuses an org's existing Anthropic credential — so opencode
+	// is usable without configuring a new provider.
+	Opencode: ClaudeSonnet46,
+}
+
+// DefaultModel returns the model to preselect for this agent.
+func (h AgentType) DefaultModel() Model { return agentTypeToDefaultModel[h] }
+
+// ModelsFor returns the models this agent can run that the org can actually
+// serve, in catalogue order.
+//
+// The intersection callers keep needing: a model is offerable only when the
+// agent runs it AND some provider serving it is configured. Offering more than
+// that means a picker shows a model whose Task fails at pickup — which is what
+// a client-side model list cannot avoid, because it cannot see the org.
+//
+// isConfigured is passed in rather than the org itself: this package must not
+// learn what an organization is.
+func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
+	var out []Model
+	for _, m := range agentTypeToModels[h] {
+		for _, p := range ProvidersFor(h, m) {
+			if isConfigured(p) {
+				out = append(out, m)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// AllAgentTypes returns every agent, in priority order — the same order
+// AgentTypesFor uses to break a tie when several can run one model.
+func AllAgentTypes() []AgentType {
+	var out []AgentType
+	for h := ClaudeCode; h < MaxAgentType; h++ {
+		if h.IsValid() {
+			out = append(out, h)
+		}
+	}
+	return out
+}
