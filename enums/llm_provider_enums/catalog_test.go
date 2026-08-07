@@ -693,47 +693,59 @@ func TestPreferredProvider_PrefersWhatTheOrgAlreadyPaysFor(t *testing.T) {
 	}
 }
 
-// An agent is INDEPENDENT of providers except where a rule says otherwise:
-// which providers serve a model is a model fact, and an agent inherits whatever
-// its models reach. This pins that derivation, so a provider can never appear
-// against an agent without a model to justify it — the drift a third
-// hand-maintained table invited.
-func TestAgentProviders_AreDerivedFromModelsMinusNamedExclusions(t *testing.T) {
+// The capability table and the model table are independent, so they can drift
+// apart silently — a provider quietly missing from an agent looks exactly like
+// one deliberately withheld. This pairs them: every provider that serves one of
+// an agent's models, but which the agent cannot use, must be NAMED as an
+// exclusion.
+//
+// Deriving capabilities instead of checking them was tried and is wrong. Today
+// the derivation happens to produce the right answer, because no agent's model
+// list overlaps a provider it cannot use — but that is a coincidence, and
+// encoding it as a rule means adding one Bedrock-served model to codex silently
+// grants codex Bedrock, which its CLI has no path to.
+func TestAgentProviders_EveryGapIsNamed(t *testing.T) {
 	for agentType, models := range agentTypeToModels {
-		reachable := map[Provider]bool{}
-		for _, m := range models {
-			for _, p := range modelToProviders[m] {
-				reachable[p] = true
-			}
+		capable := map[Provider]bool{}
+		for _, p := range agentType.Providers() {
+			capable[p] = true
 		}
 		excluded := map[Provider]bool{}
 		for _, p := range agentProviderExclusions[agentType] {
-			if !reachable[p] {
-				t.Errorf("%v excludes %v, which none of its models reach — the exclusion is dead", agentType, p)
-			}
 			excluded[p] = true
-		}
-		for _, p := range agentType.Providers() {
-			if !reachable[p] {
-				t.Errorf("%v lists %v with no model to justify it", agentType, p)
-			}
-			if excluded[p] {
-				t.Errorf("%v lists %v despite excluding it", agentType, p)
+			if capable[p] {
+				t.Errorf("%v excludes %v but also lists it as a capability", agentType, p)
 			}
 		}
-		for p := range reachable {
-			if !excluded[p] && !slicesContain(agentType.Providers(), p) {
-				t.Errorf("%v can reach %v through a model but does not list it", agentType, p)
+		for _, m := range models {
+			for _, p := range modelToProviders[m] {
+				if capable[p] || excluded[p] {
+					continue
+				}
+				t.Errorf("%v runs %v, which %v serves, but %v can use neither — if that is deliberate, name it in agentProviderExclusions",
+					agentType, m, p, agentType)
 			}
 		}
 	}
 }
 
-func slicesContain(ps []Provider, want Provider) bool {
-	for _, p := range ps {
-		if p == want {
-			return true
+// A capability an agent cannot exercise is worth knowing about: it means the
+// agent lists a provider none of its models are served by, so the intersection
+// is empty and the capability is inert. Not an error — claude-code could
+// legitimately support a provider before any model is offered through it — but
+// it should be visible rather than silent.
+func TestAgentProviders_ReportsInertCapabilities(t *testing.T) {
+	for agentType, models := range agentTypeToModels {
+		served := map[Provider]bool{}
+		for _, m := range models {
+			for _, p := range modelToProviders[m] {
+				served[p] = true
+			}
+		}
+		for _, p := range agentType.Providers() {
+			if !served[p] {
+				t.Logf("note: %v can talk to %v but runs no model served there — the capability is inert", agentType, p)
+			}
 		}
 	}
-	return false
 }

@@ -59,58 +59,59 @@ var modelToProviders = map[Model][]Provider{
 	NovaProV1: {AWSBedrock},
 }
 
-// agentProviderExclusions lists providers an agent CANNOT use even though one
-// of its models is served there.
+// agentProviderCapabilities lists which provider APIs each CLI can talk to.
 //
-// AN AGENT IS OTHERWISE INDEPENDENT OF PROVIDERS. Which providers can serve a
-// model is a model fact; an agent inherits whatever its models reach. That
-// makes AgentType.Providers a DERIVATION rather than a third hand-maintained
-// table which could silently disagree with the other two — adding a model to
-// an agent widens its providers automatically, and no list can drift.
+// AN INDEPENDENT AXIS, not derivable from the models. It is tempting to compute
+// it — an agent could just inherit whatever its models reach — and today that
+// would even produce the right answer, because no agent's model list overlaps a
+// provider it cannot use. That is a COINCIDENCE, and deriving would encode it
+// as a rule: adding one Bedrock-served model to codex would silently grant
+// codex Bedrock, which it has no path to at all.
 //
-// What remains here is the residue that genuinely is an agent×provider fact:
-// nothing about a MODEL explains it, so the model axis cannot carry it.
+// The axis is TRANSPORT: which endpoint the CLI knows how to authenticate to
+// and speak. Model availability is the other axis, and ProvidersFor intersects
+// them. Keeping them apart matters because they genuinely disagree:
+//
+//   - Codex is OpenAI-only, and NOT because Bedrock lacks OpenAI models —
+//     Bedrock does host some (the open-weight gpt-oss family). Our driver runs
+//     `codex login --with-api-key` and the CLI authenticates against
+//     wss://api.openai.com/v1/responses. Bedrock is not an OpenAI-compatible
+//     endpoint, so no model on it is reachable, whoever publishes the model.
+//   - opencode reaches Bedrock through its own "amazon-bedrock/…" model id, and
+//     claude-code through CLAUDE_CODE_USE_BEDROCK. Same provider, three
+//     different answers, none of them a property of the model.
+//
+// That last line is the disproof of "providers depend only on models": opencode
+// and codex can support the SAME model on the SAME provider and still differ.
+var agentProviderCapabilities = map[AgentType][]Provider{
+	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	Codex:      {OpenAIDirect},
+	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
+}
+
+// agentProviderExclusions names the gaps: a provider that serves one of an
+// agent's models, which the agent still may not use.
+//
+// Every such gap must be listed. A capability table and a model table can drift
+// apart silently — a provider quietly missing from an agent looks identical to
+// one deliberately withheld — so the test pairs them and fails on any gap not
+// named here.
 var agentProviderExclusions = map[AgentType][]Provider{
-	// Subscription auth is locked to the genuine `claude` CLI. Sonnet is served
-	// by a subscription, so the model axis says opencode could reach it — but
-	// Anthropic's client-identity check is what a subscription token is
-	// validated against, and routing Pro/Max credentials through a third-party
-	// agent is PROHIBITED, not merely unsupported. deployment-runner enforces
-	// the same rule at spawn.
+	// Subscription auth is locked to the genuine `claude` CLI. Sonnet IS served
+	// by a subscription and opencode DOES run Sonnet, so the model axis says
+	// opencode could reach it. Anthropic's client-identity check is what a
+	// subscription token is validated against, and routing Pro/Max credentials
+	// through a third-party agent is PROHIBITED, not merely unsupported.
+	// deployment-runner enforces the same rule at spawn.
 	Opencode: {AnthropicSubscription},
-	// Codex needs no entry: its models are OpenAI-only, so the derivation
-	// already yields OpenAIDirect alone. Listing exclusions it does not need
-	// would be re-stating the model axis here.
 }
 
 // Models returns the models this harness can run.
 func (h AgentType) Models() []Model { return agentTypeToModels[h] }
 
-// Providers returns the providers this harness can authenticate to: every
-// provider serving any model it runs, minus the exclusions above. Enum order,
-// so callers get a stable list — order carries NO preference (see
-// PreferredProvider).
-func (h AgentType) Providers() []Provider {
-	excluded := map[Provider]bool{}
-	for _, p := range agentProviderExclusions[h] {
-		excluded[p] = true
-	}
-	reachable := map[Provider]bool{}
-	for _, m := range agentTypeToModels[h] {
-		for _, p := range modelToProviders[m] {
-			if !excluded[p] {
-				reachable[p] = true
-			}
-		}
-	}
-	var out []Provider
-	for _, p := range AllProviders() {
-		if reachable[p] {
-			out = append(out, p)
-		}
-	}
-	return out
-}
+// Providers returns the provider APIs this harness can talk to. Order carries
+// NO preference — see PreferredProvider.
+func (h AgentType) Providers() []Provider { return agentProviderCapabilities[h] }
 
 // Providers returns every provider that can serve this model, ignoring which
 // harness is asking. Use ProvidersFor when a harness is known.
