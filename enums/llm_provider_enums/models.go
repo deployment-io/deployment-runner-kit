@@ -263,3 +263,96 @@ var legacyModels = map[Model]bool{
 
 // IsLegacy reports whether a newer generation of this model exists.
 func (m Model) IsLegacy() bool { return legacyModels[m] }
+
+// Tier is how capable a model is, independent of when it shipped.
+//
+// A PROPERTY OF THE MODEL, not its position in a list. Recommendation used to
+// index into agentTypeToModels — first entry for a simple task, last for a
+// complex one — which quietly required that list to stay capability-ascending
+// forever. Two things break that: adding an older generation (Sonnet 4.5 sits
+// between Haiku and Sonnet 4.6 by capability, not by release date), and the
+// passage of time. Today's frontier model is next year's balanced one, and
+// re-tagging it should be an edit HERE rather than a silent reshuffle of a
+// list that several other things read.
+type Tier uint
+
+const (
+	TierUnknown Tier = iota
+	// TierFast — cheapest and quickest; enough for mechanical work.
+	TierFast
+	// TierBalanced — the default choice for most tasks.
+	TierBalanced
+	// TierFrontier — the most capable available, for genuinely hard work.
+	TierFrontier
+
+	MaxTier
+)
+
+var tierToString = map[Tier]string{
+	TierFast:     "fast",
+	TierBalanced: "balanced",
+	TierFrontier: "frontier",
+}
+
+func (t Tier) String() string { return tierToString[t] }
+
+// modelToTier states each model's capability band.
+//
+// EXPECTED TO CHANGE as newer generations arrive — that is the point. When a
+// frontier model is superseded it moves down a band here, and every caller
+// follows without any list being reordered.
+var modelToTier = map[Model]Tier{
+	ClaudeHaiku45:  TierFast,
+	ClaudeSonnet45: TierBalanced,
+	ClaudeSonnet46: TierBalanced,
+	ClaudeOpus45:   TierFrontier,
+	ClaudeOpus48:   TierFrontier,
+	// The codex lineup is not cleanly tiered — 5.3-codex is task-specialised
+	// rather than weaker — so all three sit at balanced and the recommendation
+	// falls back to the agent's default.
+	Gpt55:      TierBalanced,
+	Gpt53Codex: TierBalanced,
+	Gpt54:      TierBalanced,
+	NovaProV1:  TierBalanced,
+}
+
+// Tier returns the model's capability band.
+func (m Model) Tier() Tier { return modelToTier[m] }
+
+// ModelForTier returns the model an agent should use at this tier, preferring
+// a current generation over a superseded one.
+//
+// Falls back to the agent's default when nothing matches, so a caller always
+// gets a usable model rather than an empty string — a tier with no model is a
+// catalogue gap, not something the caller should have to handle.
+func ModelForTier(h AgentType, t Tier) Model {
+	var current, legacy Model
+	for _, m := range agentTypeToModels[h] {
+		if m.Tier() != t {
+			continue
+		}
+		// The agent's own default wins its tier outright — an explicit choice
+		// beats any incidental one. This is what keeps a lineup that is not
+		// cleanly tiered (codex, where all three sit at balanced) from
+		// resolving to whichever model happened to be listed first.
+		if m == h.DefaultModel() {
+			return m
+		}
+		if m.IsLegacy() {
+			if legacy == 0 {
+				legacy = m
+			}
+			continue
+		}
+		if current == 0 {
+			current = m
+		}
+	}
+	switch {
+	case current != 0:
+		return current
+	case legacy != 0:
+		return legacy
+	}
+	return h.DefaultModel()
+}

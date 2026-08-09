@@ -858,3 +858,48 @@ func TestModelsFor_LegacySortsLastWithoutDisturbingCapabilityOrder(t *testing.T)
 		t.Errorf("agentTypeToModels[ClaudeCode] ends with legacy %v; high complexity would pick it", lineup[len(lineup)-1])
 	}
 }
+
+// NOTHING may depend on enum declaration order. Every ranking is an explicit
+// rule, so renumbering or inserting a constant cannot silently change which
+// agent runs a Task, which model a complexity resolves to, or which provider
+// serves a model.
+//
+// The renumbering here is the test: it swaps the values the old
+// order-dependent code leaned on, and every answer must be unchanged.
+func TestNothingDependsOnDeclarationOrder(t *testing.T) {
+	// Agent priority is a map, not the enum's order.
+	if ClaudeCode.Priority() >= Opencode.Priority() {
+		t.Error("claude-code must outrank opencode for a shared model")
+	}
+	// A model both can run resolves to the higher-priority agent regardless of
+	// which constant is numerically smaller.
+	agents := AgentTypesFor(ClaudeSonnet46)
+	if len(agents) == 0 || agents[0] != ClaudeCode {
+		t.Errorf("AgentTypesFor(Sonnet 4.6) = %v, want claude-code first", agents)
+	}
+
+	// Tier is a property, so a complexity maps to a band rather than to a list
+	// index — the whole point being that today's frontier model is tomorrow's
+	// balanced one, and re-tagging it is an edit rather than a reshuffle.
+	if got := ModelForTier(ClaudeCode, TierFast); got != ClaudeHaiku45 {
+		t.Errorf("fast tier = %v, want Haiku 4.5", got)
+	}
+	if got := ModelForTier(ClaudeCode, TierFrontier); got.IsLegacy() {
+		t.Errorf("frontier tier = %v, a superseded model", got)
+	}
+	// An untiered lineup resolves to the agent's explicit default rather than
+	// to whichever model is listed first.
+	if got := ModelForTier(Codex, TierBalanced); got != Codex.DefaultModel() {
+		t.Errorf("codex balanced = %v, want its default %v", got, Codex.DefaultModel())
+	}
+
+	// Provider preference is a rule; passing candidates in the WORST order
+	// must not change the answer.
+	worst := []Provider{AnthropicDirect, AWSBedrock, AnthropicSubscription}
+	got, ok := PreferredProvider(worst, func(p Provider) bool {
+		return p == AnthropicDirect || p == AnthropicSubscription
+	})
+	if !ok || got != AnthropicSubscription {
+		t.Errorf("PreferredProvider = %v, want the subscription regardless of order", got)
+	}
+}

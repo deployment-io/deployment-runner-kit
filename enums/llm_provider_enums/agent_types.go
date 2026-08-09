@@ -25,11 +25,15 @@ import "fmt"
 type AgentType uint
 
 const (
-	ClaudeCode AgentType = iota + 1
-	Codex
-	Opencode
+	// Explicit values, like parameters_enums.Key and Provider. These are not
+	// persisted — Task.AgentType stores the STRING — but a value that depends
+	// on the lines above it is a trap either way, and the enum is swept by
+	// AllAgentTypes below rather than counted through.
+	ClaudeCode AgentType = 1
+	Codex      AgentType = 2
+	Opencode   AgentType = 3
 
-	MaxAgentType // always add harnesses before MaxAgentType
+	MaxAgentType AgentType = 4 // kept only for callers still ranging; prefer AllAgentTypes
 )
 
 var agentTypeToString = map[AgentType]string{
@@ -100,4 +104,28 @@ var batchOnlyAgentTypes = map[AgentType]bool{
 // session, as opposed to batch Task Steps only.
 func (h AgentType) SupportsInteractiveSession() bool {
 	return !batchOnlyAgentTypes[h]
+}
+
+// agentTypePriority decides which agent runs a model that SEVERAL can run.
+//
+// Explicit, because this used to be the enum's declaration order: AgentTypesFor
+// counted up from ClaudeCode, so "claude-code wins a shared model" was encoded
+// in the fact that it happened to be 1. Renumbering or inserting an agent would
+// have silently changed which harness ran an existing Task.
+//
+// Lower wins. Claude Code leads as the most established harness; opencode is
+// last because it is the provider-agnostic one and the least specific answer
+// when something else can run the model too.
+var agentTypePriority = map[AgentType]int{
+	ClaudeCode: 0,
+	Codex:      1,
+	Opencode:   2,
+}
+
+// Priority returns the tie-break rank for a model several agents can run.
+func (h AgentType) Priority() int {
+	if p, ok := agentTypePriority[h]; ok {
+		return p
+	}
+	return len(agentTypePriority) // unranked agents sort last, deterministically
 }

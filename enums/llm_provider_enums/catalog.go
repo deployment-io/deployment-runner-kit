@@ -154,11 +154,18 @@ func ProvidersFor(h AgentType, m Model) []Provider {
 // sensible default.
 func AgentTypesFor(m Model) []AgentType {
 	var out []AgentType
-	for h := ClaudeCode; h < MaxAgentType; h++ {
+	for _, h := range AllAgentTypes() {
 		if h.Supports(m) {
 			out = append(out, h)
 		}
 	}
+	// Ranked EXPLICITLY, not by enum order. Callers take [0] as the agent that
+	// will run the model, so this decides which harness a shared id resolves
+	// to — far too load-bearing to be a side effect of which constant came
+	// first.
+	sort.SliceStable(out, func(i, j int) bool {
+		return out[i].Priority() < out[j].Priority()
+	})
 	return out
 }
 
@@ -331,11 +338,14 @@ func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
 // AllAgentTypes returns every agent, in priority order — the same order
 // AgentTypesFor uses to break a tie when several can run one model.
 func AllAgentTypes() []AgentType {
-	var out []AgentType
-	for h := ClaudeCode; h < MaxAgentType; h++ {
-		if h.IsValid() {
-			out = append(out, h)
-		}
+	// Swept from the declaration map, not counted from ClaudeCode to
+	// MaxAgentType. Counting assumes the values are contiguous, which stops
+	// being true the moment one is reserved or retired — the same reason
+	// AllProviders is derived rather than ranged.
+	out := make([]AgentType, 0, len(agentTypeToString))
+	for h := range agentTypeToString {
+		out = append(out, h)
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
 }
