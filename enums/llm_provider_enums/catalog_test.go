@@ -105,6 +105,15 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		Gpt53Codex:     "gpt-5.3-codex",
 		Gpt54:          "gpt-5.4",
 		NovaProV1:      "nova-pro-v1",
+		ClaudeSonnet45: "claude-sonnet-4-5",
+		ClaudeOpus45:   "claude-opus-4-5",
+	}
+	// EXHAUSTIVE. Without this, adding a model leaves its wire id unpinned and
+	// this test still passes — which is exactly what happened when Sonnet 4.5
+	// and Opus 4.5 were added. Pinning must be a deliberate step, not one that
+	// depends on remembering.
+	if len(cases) != len(modelToString) {
+		t.Errorf("%d models declared, %d pinned — add the new one's wire id here on purpose", len(modelToString), len(cases))
 	}
 	for m, want := range cases {
 		if got := m.String(); got != want {
@@ -469,6 +478,9 @@ func TestProviderKeys_AreStable(t *testing.T) {
 		GoogleVertex:          "google-vertex",
 		AnthropicSubscription: "anthropic-subscription",
 		OpenAIDirect:          "openai-direct",
+	}
+	if len(want) != len(providerKey) {
+		t.Errorf("%d providers have keys, %d pinned — a new slug must be pinned deliberately", len(providerKey), len(want))
 	}
 	for p, k := range want {
 		if got := p.Key(); got != k {
@@ -967,11 +979,15 @@ func TestAgentType_ValidityIsMembershipNotARange(t *testing.T) {
 // The round-trip test above only proves self-consistency; it would pass if
 // every literal changed together. This pins the literals themselves.
 func TestAgentType_WireStringsAreStable(t *testing.T) {
-	for h, want := range map[AgentType]string{
+	pinned := map[AgentType]string{
 		ClaudeCode: "claude-code",
 		Codex:      "codex",
 		Opencode:   "opencode",
-	} {
+	}
+	if len(pinned) != len(agentTypeToString) {
+		t.Errorf("%d agents declared, %d pinned — agentbox switches on these literals, so a new one must be pinned deliberately", len(agentTypeToString), len(pinned))
+	}
+	for h, want := range pinned {
 		if got := h.String(); got != want {
 			t.Errorf("%v.String() = %q, want %q — stored Tasks and agentbox both read this literal", h, got, want)
 		}
