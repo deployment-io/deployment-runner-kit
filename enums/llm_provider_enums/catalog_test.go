@@ -953,3 +953,32 @@ func TestAgentType_ValidityIsMembershipNotARange(t *testing.T) {
 		}
 	}
 }
+
+// These strings are the PERSISTED form and a container switch, in that order
+// of danger:
+//
+//	Mongo     Task.AgentType stores "claude-code"; a rename orphans every
+//	          existing Task, which then resolves to the default harness.
+//	agentbox  its config switches on these exact literals to pick a driver,
+//	          and it is a separate repo — a rename here compiles fine and
+//	          fails at spawn.
+//	wire      the AGENT_TYPE env var and the dashboard's agentType field.
+//
+// The round-trip test above only proves self-consistency; it would pass if
+// every literal changed together. This pins the literals themselves.
+func TestAgentType_WireStringsAreStable(t *testing.T) {
+	for h, want := range map[AgentType]string{
+		ClaudeCode: "claude-code",
+		Codex:      "codex",
+		Opencode:   "opencode",
+	} {
+		if got := h.String(); got != want {
+			t.Errorf("%v.String() = %q, want %q — stored Tasks and agentbox both read this literal", h, got, want)
+		}
+	}
+	// Empty resolves to claude-code: Tasks created before the agent type
+	// existed have no value stored, and agentbox applies the same default.
+	if got, err := ResolveAgentType(""); err != nil || got != ClaudeCode {
+		t.Errorf(`ResolveAgentType("") = %v (%v), want claude-code — legacy Tasks store nothing`, got, err)
+	}
+}
