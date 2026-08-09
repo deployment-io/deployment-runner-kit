@@ -139,7 +139,7 @@ func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 func TestCatalog_EveryHarnessModelPairHasAtLeastOneProvider(t *testing.T) {
 	// A harness listing a model it can never actually be served is an offer the
 	// product cannot honour — the user picks it and the task fails at spawn.
-	for h := ClaudeCode; h < MaxAgentType; h++ {
+	for _, h := range AllAgentTypes() {
 		for _, m := range h.Models() {
 			if got := ProvidersFor(h, m); len(got) == 0 {
 				t.Errorf("%s lists model %s but no provider can serve it — agentTypeToProviders and modelToProviders disagree", h, m)
@@ -239,7 +239,7 @@ func TestCatalog_SubscriptionIsClaudeCodeOnly(t *testing.T) {
 	// genuine `claude` CLI is what passes Anthropic's client-identity check, so
 	// this is prohibited rather than merely unsupported. If the table ever
 	// offered it elsewhere, the UI would present an option the runner drops.
-	for h := ClaudeCode; h < MaxAgentType; h++ {
+	for _, h := range AllAgentTypes() {
 		for _, p := range h.Providers() {
 			if p == AnthropicSubscription && h != ClaudeCode {
 				t.Errorf("%s lists AnthropicSubscription; only claude-code may use it", h)
@@ -922,6 +922,34 @@ func TestAllAgentTypes_IsPriorityOrderedNotNumeric(t *testing.T) {
 			if agents[i-1].Priority() > agents[i].Priority() {
 				t.Errorf("AgentTypesFor(%v) is not priority-ordered: %v", m, agents)
 			}
+		}
+	}
+}
+
+// The agent enum is NOT persisted — Task.AgentType stores the string
+// "claude-code" — so the numbers are free to move. What is not free is a
+// sentinel: a hand-bumped MaxAgentType made adding an agent read as INVALID
+// until someone remembered, and a reserved value read as valid. Validity is
+// membership now, exactly as Provider's is.
+func TestAgentType_ValidityIsMembershipNotARange(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		if !h.IsValid() {
+			t.Errorf("%v is declared but not valid", h)
+		}
+	}
+	// A value past the declared set must be invalid — a range check with a
+	// stale sentinel would have accepted it.
+	if AgentType(99).IsValid() {
+		t.Error("an undeclared agent must not be valid")
+	}
+	if AgentType(0).IsValid() {
+		t.Error("the zero value must not be valid")
+	}
+	// And the string is what persists, so it must round-trip.
+	for _, h := range AllAgentTypes() {
+		got, err := ResolveAgentType(h.String())
+		if err != nil || got != h {
+			t.Errorf("%v does not round-trip through its wire string: got %v (%v)", h, got, err)
 		}
 	}
 }

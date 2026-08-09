@@ -334,10 +334,10 @@ func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
 // AllAgentTypes returns every agent, in priority order — the same order
 // AgentTypesFor uses to break a tie when several can run one model.
 func AllAgentTypes() []AgentType {
-	// Swept from the declaration map, not counted from ClaudeCode to
-	// MaxAgentType. Counting assumes the values are contiguous, which stops
-	// being true the moment one is reserved or retired — the same reason
-	// AllProviders is derived rather than ranged.
+	// Swept from the declaration map rather than counted through a range.
+	// Counting assumes the values are contiguous, which stops being true the
+	// moment one is reserved or retired — the same reason AllProviders is
+	// derived.
 	out := make([]AgentType, 0, len(agentTypeToString))
 	for h := range agentTypeToString {
 		out = append(out, h)

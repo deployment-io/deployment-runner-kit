@@ -32,8 +32,6 @@ const (
 	ClaudeCode AgentType = 1
 	Codex      AgentType = 2
 	Opencode   AgentType = 3
-
-	MaxAgentType AgentType = 4 // kept only for callers still ranging; prefer AllAgentTypes
 )
 
 var agentTypeToString = map[AgentType]string{
@@ -55,7 +53,12 @@ func (h AgentType) String() string {
 }
 
 func (h AgentType) IsValid() bool {
-	return h > 0 && h < MaxAgentType
+	// Membership, not a range. A sentinel has to be hand-bumped, so adding an
+	// agent and forgetting reads as INVALID, while reserving a value makes the
+	// gap read as valid. Neither fails loudly. Same reason Provider dropped
+	// MaxProvider.
+	_, ok := agentTypeToString[h]
+	return ok
 }
 
 // ResolveAgentType parses an AGENT_TYPE string. The empty string resolves to
