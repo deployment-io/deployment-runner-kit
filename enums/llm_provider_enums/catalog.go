@@ -1,5 +1,7 @@
 package llm_provider_enums
 
+import "sort"
+
 // The catalogue: which (harness, model, provider) combinations are real.
 //
 // Held as THREE FLAT TABLES rather than one nested map[AgentType]map[Model][]Provider,
@@ -313,6 +315,16 @@ func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
 			}
 		}
 	}
+	// Legacy generations last, current order preserved within each group. Done
+	// HERE rather than in agentTypeToModels because that list is
+	// capability-ascending and kit's recommendedByComplexity indexes into it —
+	// reordering it would make "high complexity" resolve to a superseded model.
+	//
+	// Sorted server-side so every client agrees. A picker that ordered these
+	// itself would be one more copy of a catalogue fact.
+	sort.SliceStable(out, func(i, j int) bool {
+		return !out[i].IsLegacy() && out[j].IsLegacy()
+	})
 	return out
 }
 

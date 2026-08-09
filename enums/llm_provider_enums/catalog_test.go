@@ -812,3 +812,49 @@ func TestCatalog_GenerationsCoexistWithoutShadowing(t *testing.T) {
 		}
 	}
 }
+
+// Legacy models sort last in pickers, but must NOT be reordered in
+// agentTypeToModels — kit's recommendedByComplexity indexes into that list, so
+// putting a superseded model at the end would make "high complexity" pick it.
+func TestModelsFor_LegacySortsLastWithoutDisturbingCapabilityOrder(t *testing.T) {
+	all := func(Provider) bool { return true }
+	got := ModelsFor(ClaudeCode, all)
+
+	seenLegacy := false
+	for _, m := range got {
+		if m.IsLegacy() {
+			seenLegacy = true
+			continue
+		}
+		if seenLegacy {
+			t.Errorf("current model %v appears after a legacy one in %v", m, got)
+		}
+	}
+	// Order WITHIN each group is preserved, so the picker still reads
+	// low->high inside the current models.
+	var current []Model
+	for _, m := range got {
+		if !m.IsLegacy() {
+			current = append(current, m)
+		}
+	}
+	var expected []Model
+	for _, m := range agentTypeToModels[ClaudeCode] {
+		if !m.IsLegacy() {
+			expected = append(expected, m)
+		}
+	}
+	for i := range expected {
+		if current[i] != expected[i] {
+			t.Errorf("current models reordered: got %v, want %v", current, expected)
+			break
+		}
+	}
+
+	// The capability list itself must stay ascending — the last entry is what
+	// a high-complexity session gets, and it must not be superseded.
+	lineup := agentTypeToModels[ClaudeCode]
+	if lineup[len(lineup)-1].IsLegacy() {
+		t.Errorf("agentTypeToModels[ClaudeCode] ends with legacy %v; high complexity would pick it", lineup[len(lineup)-1])
+	}
+}

@@ -245,3 +245,21 @@ func (m Model) DisplayName() string {
 	}
 	return m.String()
 }
+
+// legacyModels are superseded by a newer generation but kept offerable.
+//
+// They exist because BEDROCK AVAILABILITY LAGS the direct API: an account with
+// Sonnet 4.5 and not 4.6 needs the older entry to run anything at all, since
+// the profile prefixes are version-pinned and refuse to cross generations.
+//
+// A DISPLAY concern only. It must not touch agentTypeToModels' order, which is
+// capability-ascending and indexed by kit's recommendedByComplexity — sorting
+// legacy to the end of that list would make "high complexity" resolve to Opus
+// 4.5. ModelsFor applies the ordering instead, where it affects pickers alone.
+var legacyModels = map[Model]bool{
+	ClaudeSonnet45: true,
+	ClaudeOpus45:   true,
+}
+
+// IsLegacy reports whether a newer generation of this model exists.
+func (m Model) IsLegacy() bool { return legacyModels[m] }
