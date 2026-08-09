@@ -34,9 +34,9 @@ package llm_provider_enums
 // and §4.1, where the prefix's second job (disambiguating the harness) is what
 // made stripping it dangerous until AgentType became explicit.
 var agentTypeToModels = map[AgentType][]Model{
-	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48},
+	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48},
 	Codex:      {Gpt55, Gpt53Codex, Gpt54},
-	Opencode:   {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48, Gpt55, NovaProV1},
+	Opencode:   {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -57,6 +57,10 @@ var modelToProviders = map[Model][]Provider{
 	// its vendor. claude-code and codex cannot run it — agentTypeToModels keeps
 	// it to opencode.
 	NovaProV1: {AWSBedrock},
+	// Same providers as their 4.6/4.8 siblings — the direct API and a
+	// subscription still serve them, and Bedrock is where they matter most.
+	ClaudeSonnet45: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeOpus45:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 }
 
 // agentProviderCapabilities lists which provider APIs each CLI can talk to.

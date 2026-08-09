@@ -30,6 +30,16 @@ const (
 	// non-Anthropic, non-OpenAI model, which is what the vendor axis was
 	// added for.
 	NovaProV1
+	// The 4.5-generation Claude models. Kept in the catalogue because BEDROCK
+	// AVAILABILITY LAGS the direct API and varies by account and region: an org
+	// whose Bedrock has Sonnet 4.5 but not 4.6 could otherwise run no Claude
+	// model there at all, since the profile prefixes are version-pinned and 4.6
+	// deliberately will not match a 4.5 profile.
+	//
+	// Ordinary catalogue models, not a Bedrock special case — the direct API
+	// still serves them, and pinning an older version is a legitimate choice.
+	ClaudeSonnet45
+	ClaudeOpus45
 
 	MaxModel // always add models before MaxModel
 )
@@ -45,6 +55,8 @@ var modelToString = map[Model]string{
 	Gpt53Codex:     "gpt-5.3-codex",
 	Gpt54:          "gpt-5.4",
 	NovaProV1:      "nova-pro-v1",
+	ClaudeSonnet45: "claude-sonnet-4-5",
+	ClaudeOpus45:   "claude-opus-4-5",
 }
 
 var stringToModel = func() map[string]Model {
@@ -105,7 +117,9 @@ var modelToBedrockProfilePrefix = map[Model]string{
 	ClaudeOpus48:   "claude-opus-4-8",
 	// Matches ids like eu.amazon.nova-pro-v1:0 — the vendor and region
 	// segments come from the profile id that discovery returns.
-	NovaProV1: "nova-pro-v1",
+	NovaProV1:      "nova-pro-v1",
+	ClaudeSonnet45: "claude-sonnet-4-5",
+	ClaudeOpus45:   "claude-opus-4-5",
 }
 
 // BedrockProfilePrefix returns the version-pinned prefix for a model, or ""
@@ -161,6 +175,8 @@ var modelToVendor = map[Model]Vendor{
 	Gpt53Codex:     VendorOpenAI,
 	Gpt54:          VendorOpenAI,
 	NovaProV1:      VendorAmazon,
+	ClaudeSonnet45: VendorAnthropic,
+	ClaudeOpus45:   VendorAnthropic,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.
@@ -217,6 +233,8 @@ var modelToDisplayName = map[Model]string{
 	Gpt53Codex:     "GPT-5.3 Codex",
 	Gpt54:          "GPT-5.4",
 	NovaProV1:      "Nova Pro",
+	ClaudeSonnet45: "Sonnet 4.5",
+	ClaudeOpus45:   "Opus 4.5",
 }
 
 // DisplayName returns the human-facing name, falling back to the wire id so an

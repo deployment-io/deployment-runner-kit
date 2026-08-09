@@ -780,3 +780,35 @@ func TestAgentType_EveryAgentHasADisplayName(t *testing.T) {
 		t.Error("opencode has no interactive mode in agentbox")
 	}
 }
+
+// Bedrock availability lags the direct API and varies by account and region.
+// The version-pinned prefixes mean a 4.6 request will NOT fall back to a 4.5
+// profile — correct, but it leaves an org whose Bedrock only has 4.5 unable to
+// run any Claude model there unless the catalogue carries the older version
+// too. This pins that the pair coexist without shadowing each other.
+func TestCatalog_GenerationsCoexistWithoutShadowing(t *testing.T) {
+	pairs := []struct{ older, newer Model }{
+		{ClaudeSonnet45, ClaudeSonnet46},
+		{ClaudeOpus45, ClaudeOpus48},
+	}
+	for _, p := range pairs {
+		o, n := p.older.BedrockProfilePrefix(), p.newer.BedrockProfilePrefix()
+		if o == "" || n == "" {
+			t.Errorf("%v/%v: both generations need a Bedrock prefix", p.older, p.newer)
+			continue
+		}
+		// Neither may be a prefix of the other, or discovery's Contains match
+		// would let one generation resolve to the other's profile — the silent
+		// wrong-model swap the pinning exists to prevent.
+		if strings.HasPrefix(o, n) || strings.HasPrefix(n, o) {
+			t.Errorf("%q and %q overlap; discovery could resolve one to the other", o, n)
+		}
+		// Both must be offered by the same agents, or picking the older one
+		// silently changes which harness runs.
+		for _, at := range AllAgentTypes() {
+			if at.Supports(p.newer) != at.Supports(p.older) {
+				t.Errorf("%v supports %v but not %v; the generations must be interchangeable", at, p.newer, p.older)
+			}
+		}
+	}
+}
