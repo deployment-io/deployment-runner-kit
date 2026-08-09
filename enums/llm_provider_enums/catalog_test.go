@@ -105,6 +105,15 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		Gpt53Codex:     "gpt-5.3-codex",
 		Gpt54:          "gpt-5.4",
 		NovaProV1:      "nova-pro-v1",
+		ClaudeSonnet45: "claude-sonnet-4-5",
+		ClaudeOpus45:   "claude-opus-4-5",
+	}
+	// EXHAUSTIVE. Without this, adding a model leaves its wire id unpinned and
+	// this test still passes — which is exactly what happened when Sonnet 4.5
+	// and Opus 4.5 were added. Pinning must be a deliberate step, not one that
+	// depends on remembering.
+	if len(cases) != len(modelToString) {
+		t.Errorf("%d models declared, %d pinned — add the new one's wire id here on purpose", len(modelToString), len(cases))
 	}
 	for m, want := range cases {
 		if got := m.String(); got != want {
@@ -139,7 +148,7 @@ func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 func TestCatalog_EveryHarnessModelPairHasAtLeastOneProvider(t *testing.T) {
 	// A harness listing a model it can never actually be served is an offer the
 	// product cannot honour — the user picks it and the task fails at spawn.
-	for h := ClaudeCode; h < MaxAgentType; h++ {
+	for _, h := range AllAgentTypes() {
 		for _, m := range h.Models() {
 			if got := ProvidersFor(h, m); len(got) == 0 {
 				t.Errorf("%s lists model %s but no provider can serve it — agentTypeToProviders and modelToProviders disagree", h, m)
@@ -239,7 +248,7 @@ func TestCatalog_SubscriptionIsClaudeCodeOnly(t *testing.T) {
 	// genuine `claude` CLI is what passes Anthropic's client-identity check, so
 	// this is prohibited rather than merely unsupported. If the table ever
 	// offered it elsewhere, the UI would present an option the runner drops.
-	for h := ClaudeCode; h < MaxAgentType; h++ {
+	for _, h := range AllAgentTypes() {
 		for _, p := range h.Providers() {
 			if p == AnthropicSubscription && h != ClaudeCode {
 				t.Errorf("%s lists AnthropicSubscription; only claude-code may use it", h)
@@ -469,6 +478,9 @@ func TestProviderKeys_AreStable(t *testing.T) {
 		GoogleVertex:          "google-vertex",
 		AnthropicSubscription: "anthropic-subscription",
 		OpenAIDirect:          "openai-direct",
+	}
+	if len(want) != len(providerKey) {
+		t.Errorf("%d providers have keys, %d pinned — a new slug must be pinned deliberately", len(providerKey), len(want))
 	}
 	for p, k := range want {
 		if got := p.Key(); got != k {
@@ -778,5 +790,211 @@ func TestAgentType_EveryAgentHasADisplayName(t *testing.T) {
 	// have nothing to talk to.
 	if Opencode.SupportsInteractiveSession() {
 		t.Error("opencode has no interactive mode in agentbox")
+	}
+}
+
+// Bedrock availability lags the direct API and varies by account and region.
+// The version-pinned prefixes mean a 4.6 request will NOT fall back to a 4.5
+// profile — correct, but it leaves an org whose Bedrock only has 4.5 unable to
+// run any Claude model there unless the catalogue carries the older version
+// too. This pins that the pair coexist without shadowing each other.
+func TestCatalog_GenerationsCoexistWithoutShadowing(t *testing.T) {
+	pairs := []struct{ older, newer Model }{
+		{ClaudeSonnet45, ClaudeSonnet46},
+		{ClaudeOpus45, ClaudeOpus48},
+	}
+	for _, p := range pairs {
+		o, n := p.older.BedrockProfilePrefix(), p.newer.BedrockProfilePrefix()
+		if o == "" || n == "" {
+			t.Errorf("%v/%v: both generations need a Bedrock prefix", p.older, p.newer)
+			continue
+		}
+		// Neither may be a prefix of the other, or discovery's Contains match
+		// would let one generation resolve to the other's profile — the silent
+		// wrong-model swap the pinning exists to prevent.
+		if strings.HasPrefix(o, n) || strings.HasPrefix(n, o) {
+			t.Errorf("%q and %q overlap; discovery could resolve one to the other", o, n)
+		}
+		// Both must be offered by the same agents, or picking the older one
+		// silently changes which harness runs.
+		for _, at := range AllAgentTypes() {
+			if at.Supports(p.newer) != at.Supports(p.older) {
+				t.Errorf("%v supports %v but not %v; the generations must be interchangeable", at, p.newer, p.older)
+			}
+		}
+	}
+}
+
+// Legacy models sort last in pickers, but must NOT be reordered in
+// agentTypeToModels — kit's recommendedByComplexity indexes into that list, so
+// putting a superseded model at the end would make "high complexity" pick it.
+func TestModelsFor_LegacySortsLastWithoutDisturbingCapabilityOrder(t *testing.T) {
+	all := func(Provider) bool { return true }
+	got := ModelsFor(ClaudeCode, all)
+
+	seenLegacy := false
+	for _, m := range got {
+		if m.IsLegacy() {
+			seenLegacy = true
+			continue
+		}
+		if seenLegacy {
+			t.Errorf("current model %v appears after a legacy one in %v", m, got)
+		}
+	}
+	// Order WITHIN each group is preserved, so the picker still reads
+	// low->high inside the current models.
+	var current []Model
+	for _, m := range got {
+		if !m.IsLegacy() {
+			current = append(current, m)
+		}
+	}
+	var expected []Model
+	for _, m := range agentTypeToModels[ClaudeCode] {
+		if !m.IsLegacy() {
+			expected = append(expected, m)
+		}
+	}
+	for i := range expected {
+		if current[i] != expected[i] {
+			t.Errorf("current models reordered: got %v, want %v", current, expected)
+			break
+		}
+	}
+
+	// The capability list itself must stay ascending — the last entry is what
+	// a high-complexity session gets, and it must not be superseded.
+	lineup := agentTypeToModels[ClaudeCode]
+	if lineup[len(lineup)-1].IsLegacy() {
+		t.Errorf("agentTypeToModels[ClaudeCode] ends with legacy %v; high complexity would pick it", lineup[len(lineup)-1])
+	}
+}
+
+// NOTHING may depend on enum declaration order. Every ranking is an explicit
+// rule, so renumbering or inserting a constant cannot silently change which
+// agent runs a Task, which model a complexity resolves to, or which provider
+// serves a model.
+//
+// The renumbering here is the test: it swaps the values the old
+// order-dependent code leaned on, and every answer must be unchanged.
+func TestNothingDependsOnDeclarationOrder(t *testing.T) {
+	// Agent priority is a map, not the enum's order.
+	if ClaudeCode.Priority() >= Opencode.Priority() {
+		t.Error("claude-code must outrank opencode for a shared model")
+	}
+	// A model both can run resolves to the higher-priority agent regardless of
+	// which constant is numerically smaller.
+	agents := AgentTypesFor(ClaudeSonnet46)
+	if len(agents) == 0 || agents[0] != ClaudeCode {
+		t.Errorf("AgentTypesFor(Sonnet 4.6) = %v, want claude-code first", agents)
+	}
+
+	// Tier is a property, so a complexity maps to a band rather than to a list
+	// index — the whole point being that today's frontier model is tomorrow's
+	// balanced one, and re-tagging it is an edit rather than a reshuffle.
+	if got := ModelForTier(ClaudeCode, TierFast); got != ClaudeHaiku45 {
+		t.Errorf("fast tier = %v, want Haiku 4.5", got)
+	}
+	if got := ModelForTier(ClaudeCode, TierFrontier); got.IsLegacy() {
+		t.Errorf("frontier tier = %v, a superseded model", got)
+	}
+	// An untiered lineup resolves to the agent's explicit default rather than
+	// to whichever model is listed first.
+	if got := ModelForTier(Codex, TierBalanced); got != Codex.DefaultModel() {
+		t.Errorf("codex balanced = %v, want its default %v", got, Codex.DefaultModel())
+	}
+
+	// Provider preference is a rule; passing candidates in the WORST order
+	// must not change the answer.
+	worst := []Provider{AnthropicDirect, AWSBedrock, AnthropicSubscription}
+	got, ok := PreferredProvider(worst, func(p Provider) bool {
+		return p == AnthropicDirect || p == AnthropicSubscription
+	})
+	if !ok || got != AnthropicSubscription {
+		t.Errorf("PreferredProvider = %v, want the subscription regardless of order", got)
+	}
+}
+
+// AllAgentTypes feeds the agent picker, so its order is USER-VISIBLE. Ranking
+// it by value would put the enum's declaration order on screen — the same
+// dependency AgentTypesFor stopped carrying.
+func TestAllAgentTypes_IsPriorityOrderedNotNumeric(t *testing.T) {
+	got := AllAgentTypes()
+	for i := 1; i < len(got); i++ {
+		if got[i-1].Priority() > got[i].Priority() {
+			t.Errorf("AllAgentTypes is not priority-ordered: %v", got)
+		}
+	}
+	// And AgentTypesFor inherits it — a model several agents run must report
+	// the highest-priority one first, since callers take [0] as the harness.
+	for _, m := range []Model{ClaudeSonnet46, ClaudeHaiku45} {
+		agents := AgentTypesFor(m)
+		for i := 1; i < len(agents); i++ {
+			if agents[i-1].Priority() > agents[i].Priority() {
+				t.Errorf("AgentTypesFor(%v) is not priority-ordered: %v", m, agents)
+			}
+		}
+	}
+}
+
+// The agent enum is NOT persisted — Task.AgentType stores the string
+// "claude-code" — so the numbers are free to move. What is not free is a
+// sentinel: a hand-bumped MaxAgentType made adding an agent read as INVALID
+// until someone remembered, and a reserved value read as valid. Validity is
+// membership now, exactly as Provider's is.
+func TestAgentType_ValidityIsMembershipNotARange(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		if !h.IsValid() {
+			t.Errorf("%v is declared but not valid", h)
+		}
+	}
+	// A value past the declared set must be invalid — a range check with a
+	// stale sentinel would have accepted it.
+	if AgentType(99).IsValid() {
+		t.Error("an undeclared agent must not be valid")
+	}
+	if AgentType(0).IsValid() {
+		t.Error("the zero value must not be valid")
+	}
+	// And the string is what persists, so it must round-trip.
+	for _, h := range AllAgentTypes() {
+		got, err := ResolveAgentType(h.String())
+		if err != nil || got != h {
+			t.Errorf("%v does not round-trip through its wire string: got %v (%v)", h, got, err)
+		}
+	}
+}
+
+// These strings are the PERSISTED form and a container switch, in that order
+// of danger:
+//
+//	Mongo     Task.AgentType stores "claude-code"; a rename orphans every
+//	          existing Task, which then resolves to the default harness.
+//	agentbox  its config switches on these exact literals to pick a driver,
+//	          and it is a separate repo — a rename here compiles fine and
+//	          fails at spawn.
+//	wire      the AGENT_TYPE env var and the dashboard's agentType field.
+//
+// The round-trip test above only proves self-consistency; it would pass if
+// every literal changed together. This pins the literals themselves.
+func TestAgentType_WireStringsAreStable(t *testing.T) {
+	pinned := map[AgentType]string{
+		ClaudeCode: "claude-code",
+		Codex:      "codex",
+		Opencode:   "opencode",
+	}
+	if len(pinned) != len(agentTypeToString) {
+		t.Errorf("%d agents declared, %d pinned — agentbox switches on these literals, so a new one must be pinned deliberately", len(agentTypeToString), len(pinned))
+	}
+	for h, want := range pinned {
+		if got := h.String(); got != want {
+			t.Errorf("%v.String() = %q, want %q — stored Tasks and agentbox both read this literal", h, got, want)
+		}
+	}
+	// Empty resolves to claude-code: Tasks created before the agent type
+	// existed have no value stored, and agentbox applies the same default.
+	if got, err := ResolveAgentType(""); err != nil || got != ClaudeCode {
+		t.Errorf(`ResolveAgentType("") = %v (%v), want claude-code — legacy Tasks store nothing`, got, err)
 	}
 }

@@ -30,6 +30,16 @@ const (
 	// non-Anthropic, non-OpenAI model, which is what the vendor axis was
 	// added for.
 	NovaProV1
+	// The 4.5-generation Claude models. Kept in the catalogue because BEDROCK
+	// AVAILABILITY LAGS the direct API and varies by account and region: an org
+	// whose Bedrock has Sonnet 4.5 but not 4.6 could otherwise run no Claude
+	// model there at all, since the profile prefixes are version-pinned and 4.6
+	// deliberately will not match a 4.5 profile.
+	//
+	// Ordinary catalogue models, not a Bedrock special case — the direct API
+	// still serves them, and pinning an older version is a legitimate choice.
+	ClaudeSonnet45
+	ClaudeOpus45
 
 	MaxModel // always add models before MaxModel
 )
@@ -45,6 +55,8 @@ var modelToString = map[Model]string{
 	Gpt53Codex:     "gpt-5.3-codex",
 	Gpt54:          "gpt-5.4",
 	NovaProV1:      "nova-pro-v1",
+	ClaudeSonnet45: "claude-sonnet-4-5",
+	ClaudeOpus45:   "claude-opus-4-5",
 }
 
 var stringToModel = func() map[string]Model {
@@ -105,7 +117,9 @@ var modelToBedrockProfilePrefix = map[Model]string{
 	ClaudeOpus48:   "claude-opus-4-8",
 	// Matches ids like eu.amazon.nova-pro-v1:0 — the vendor and region
 	// segments come from the profile id that discovery returns.
-	NovaProV1: "nova-pro-v1",
+	NovaProV1:      "nova-pro-v1",
+	ClaudeSonnet45: "claude-sonnet-4-5",
+	ClaudeOpus45:   "claude-opus-4-5",
 }
 
 // BedrockProfilePrefix returns the version-pinned prefix for a model, or ""
@@ -161,6 +175,8 @@ var modelToVendor = map[Model]Vendor{
 	Gpt53Codex:     VendorOpenAI,
 	Gpt54:          VendorOpenAI,
 	NovaProV1:      VendorAmazon,
+	ClaudeSonnet45: VendorAnthropic,
+	ClaudeOpus45:   VendorAnthropic,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.
@@ -217,6 +233,8 @@ var modelToDisplayName = map[Model]string{
 	Gpt53Codex:     "GPT-5.3 Codex",
 	Gpt54:          "GPT-5.4",
 	NovaProV1:      "Nova Pro",
+	ClaudeSonnet45: "Sonnet 4.5",
+	ClaudeOpus45:   "Opus 4.5",
 }
 
 // DisplayName returns the human-facing name, falling back to the wire id so an
@@ -226,4 +244,115 @@ func (m Model) DisplayName() string {
 		return name
 	}
 	return m.String()
+}
+
+// legacyModels are superseded by a newer generation but kept offerable.
+//
+// They exist because BEDROCK AVAILABILITY LAGS the direct API: an account with
+// Sonnet 4.5 and not 4.6 needs the older entry to run anything at all, since
+// the profile prefixes are version-pinned and refuse to cross generations.
+//
+// A DISPLAY concern only. It must not touch agentTypeToModels' order, which is
+// capability-ascending and indexed by kit's recommendedByComplexity — sorting
+// legacy to the end of that list would make "high complexity" resolve to Opus
+// 4.5. ModelsFor applies the ordering instead, where it affects pickers alone.
+var legacyModels = map[Model]bool{
+	ClaudeSonnet45: true,
+	ClaudeOpus45:   true,
+}
+
+// IsLegacy reports whether a newer generation of this model exists.
+func (m Model) IsLegacy() bool { return legacyModels[m] }
+
+// Tier is how capable a model is, independent of when it shipped.
+//
+// A PROPERTY OF THE MODEL, not its position in a list. Recommendation used to
+// index into agentTypeToModels — first entry for a simple task, last for a
+// complex one — which quietly required that list to stay capability-ascending
+// forever. Two things break that: adding an older generation (Sonnet 4.5 sits
+// between Haiku and Sonnet 4.6 by capability, not by release date), and the
+// passage of time. Today's frontier model is next year's balanced one, and
+// re-tagging it should be an edit HERE rather than a silent reshuffle of a
+// list that several other things read.
+type Tier uint
+
+const (
+	TierUnknown Tier = iota
+	// TierFast — cheapest and quickest; enough for mechanical work.
+	TierFast
+	// TierBalanced — the default choice for most tasks.
+	TierBalanced
+	// TierFrontier — the most capable available, for genuinely hard work.
+	TierFrontier
+
+	MaxTier
+)
+
+var tierToString = map[Tier]string{
+	TierFast:     "fast",
+	TierBalanced: "balanced",
+	TierFrontier: "frontier",
+}
+
+func (t Tier) String() string { return tierToString[t] }
+
+// modelToTier states each model's capability band.
+//
+// EXPECTED TO CHANGE as newer generations arrive — that is the point. When a
+// frontier model is superseded it moves down a band here, and every caller
+// follows without any list being reordered.
+var modelToTier = map[Model]Tier{
+	ClaudeHaiku45:  TierFast,
+	ClaudeSonnet45: TierBalanced,
+	ClaudeSonnet46: TierBalanced,
+	ClaudeOpus45:   TierFrontier,
+	ClaudeOpus48:   TierFrontier,
+	// The codex lineup is not cleanly tiered — 5.3-codex is task-specialised
+	// rather than weaker — so all three sit at balanced and the recommendation
+	// falls back to the agent's default.
+	Gpt55:      TierBalanced,
+	Gpt53Codex: TierBalanced,
+	Gpt54:      TierBalanced,
+	NovaProV1:  TierBalanced,
+}
+
+// Tier returns the model's capability band.
+func (m Model) Tier() Tier { return modelToTier[m] }
+
+// ModelForTier returns the model an agent should use at this tier, preferring
+// a current generation over a superseded one.
+//
+// Falls back to the agent's default when nothing matches, so a caller always
+// gets a usable model rather than an empty string — a tier with no model is a
+// catalogue gap, not something the caller should have to handle.
+func ModelForTier(h AgentType, t Tier) Model {
+	var current, legacy Model
+	for _, m := range agentTypeToModels[h] {
+		if m.Tier() != t {
+			continue
+		}
+		// The agent's own default wins its tier outright — an explicit choice
+		// beats any incidental one. This is what keeps a lineup that is not
+		// cleanly tiered (codex, where all three sit at balanced) from
+		// resolving to whichever model happened to be listed first.
+		if m == h.DefaultModel() {
+			return m
+		}
+		if m.IsLegacy() {
+			if legacy == 0 {
+				legacy = m
+			}
+			continue
+		}
+		if current == 0 {
+			current = m
+		}
+	}
+	switch {
+	case current != 0:
+		return current
+	case legacy != 0:
+		return legacy
+	}
+	return h.DefaultModel()
 }

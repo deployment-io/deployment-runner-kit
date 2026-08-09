@@ -1,5 +1,7 @@
 package llm_provider_enums
 
+import "sort"
+
 // The catalogue: which (harness, model, provider) combinations are real.
 //
 // Held as THREE FLAT TABLES rather than one nested map[AgentType]map[Model][]Provider,
@@ -34,9 +36,9 @@ package llm_provider_enums
 // and §4.1, where the prefix's second job (disambiguating the harness) is what
 // made stripping it dangerous until AgentType became explicit.
 var agentTypeToModels = map[AgentType][]Model{
-	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48},
+	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48},
 	Codex:      {Gpt55, Gpt53Codex, Gpt54},
-	Opencode:   {ClaudeHaiku45, ClaudeSonnet46, ClaudeOpus48, Gpt55, NovaProV1},
+	Opencode:   {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -57,6 +59,10 @@ var modelToProviders = map[Model][]Provider{
 	// its vendor. claude-code and codex cannot run it — agentTypeToModels keeps
 	// it to opencode.
 	NovaProV1: {AWSBedrock},
+	// Same providers as their 4.6/4.8 siblings — the direct API and a
+	// subscription still serve them, and Bedrock is where they matter most.
+	ClaudeSonnet45: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeOpus45:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 }
 
 // agentProviderCapabilities lists which provider APIs each CLI can talk to.
@@ -148,11 +154,14 @@ func ProvidersFor(h AgentType, m Model) []Provider {
 // sensible default.
 func AgentTypesFor(m Model) []AgentType {
 	var out []AgentType
-	for h := ClaudeCode; h < MaxAgentType; h++ {
+	for _, h := range AllAgentTypes() {
 		if h.Supports(m) {
 			out = append(out, h)
 		}
 	}
+	// Already in priority order — AllAgentTypes ranks, and this only filters.
+	// Callers take [0] as the agent that will run the model, so that ranking
+	// decides which harness a shared id resolves to.
 	return out
 }
 
@@ -309,17 +318,40 @@ func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
 			}
 		}
 	}
+	// Legacy generations last, current order preserved within each group. Done
+	// HERE rather than in agentTypeToModels because that list is
+	// capability-ascending and kit's recommendedByComplexity indexes into it —
+	// reordering it would make "high complexity" resolve to a superseded model.
+	//
+	// Sorted server-side so every client agrees. A picker that ordered these
+	// itself would be one more copy of a catalogue fact.
+	sort.SliceStable(out, func(i, j int) bool {
+		return !out[i].IsLegacy() && out[j].IsLegacy()
+	})
 	return out
 }
 
 // AllAgentTypes returns every agent, in priority order — the same order
 // AgentTypesFor uses to break a tie when several can run one model.
 func AllAgentTypes() []AgentType {
-	var out []AgentType
-	for h := ClaudeCode; h < MaxAgentType; h++ {
-		if h.IsValid() {
-			out = append(out, h)
-		}
+	// Swept from the declaration map rather than counted through a range.
+	// Counting assumes the values are contiguous, which stops being true the
+	// moment one is reserved or retired — the same reason AllProviders is
+	// derived.
+	out := make([]AgentType, 0, len(agentTypeToString))
+	for h := range agentTypeToString {
+		out = append(out, h)
 	}
+	// PRIORITY order, not numeric. This is what app-server iterates to build
+	// the agent picker, so sorting by value would put the enum's declaration
+	// order on screen — the same dependency AgentTypesFor just stopped
+	// carrying. Value is the tie-break only, so the result stays deterministic
+	// if two agents ever share a rank.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Priority() != out[j].Priority() {
+			return out[i].Priority() < out[j].Priority()
+		}
+		return out[i] < out[j]
+	})
 	return out
 }
