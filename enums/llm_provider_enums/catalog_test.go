@@ -903,3 +903,25 @@ func TestNothingDependsOnDeclarationOrder(t *testing.T) {
 		t.Errorf("PreferredProvider = %v, want the subscription regardless of order", got)
 	}
 }
+
+// AllAgentTypes feeds the agent picker, so its order is USER-VISIBLE. Ranking
+// it by value would put the enum's declaration order on screen — the same
+// dependency AgentTypesFor stopped carrying.
+func TestAllAgentTypes_IsPriorityOrderedNotNumeric(t *testing.T) {
+	got := AllAgentTypes()
+	for i := 1; i < len(got); i++ {
+		if got[i-1].Priority() > got[i].Priority() {
+			t.Errorf("AllAgentTypes is not priority-ordered: %v", got)
+		}
+	}
+	// And AgentTypesFor inherits it — a model several agents run must report
+	// the highest-priority one first, since callers take [0] as the harness.
+	for _, m := range []Model{ClaudeSonnet46, ClaudeHaiku45} {
+		agents := AgentTypesFor(m)
+		for i := 1; i < len(agents); i++ {
+			if agents[i-1].Priority() > agents[i].Priority() {
+				t.Errorf("AgentTypesFor(%v) is not priority-ordered: %v", m, agents)
+			}
+		}
+	}
+}

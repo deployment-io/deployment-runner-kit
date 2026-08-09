@@ -159,13 +159,9 @@ func AgentTypesFor(m Model) []AgentType {
 			out = append(out, h)
 		}
 	}
-	// Ranked EXPLICITLY, not by enum order. Callers take [0] as the agent that
-	// will run the model, so this decides which harness a shared id resolves
-	// to — far too load-bearing to be a side effect of which constant came
-	// first.
-	sort.SliceStable(out, func(i, j int) bool {
-		return out[i].Priority() < out[j].Priority()
-	})
+	// Already in priority order — AllAgentTypes ranks, and this only filters.
+	// Callers take [0] as the agent that will run the model, so that ranking
+	// decides which harness a shared id resolves to.
 	return out
 }
 
@@ -346,6 +342,16 @@ func AllAgentTypes() []AgentType {
 	for h := range agentTypeToString {
 		out = append(out, h)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	// PRIORITY order, not numeric. This is what app-server iterates to build
+	// the agent picker, so sorting by value would put the enum's declaration
+	// order on screen — the same dependency AgentTypesFor just stopped
+	// carrying. Value is the tie-break only, so the result stays deterministic
+	// if two agents ever share a rank.
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Priority() != out[j].Priority() {
+			return out[i].Priority() < out[j].Priority()
+		}
+		return out[i] < out[j]
+	})
 	return out
 }
