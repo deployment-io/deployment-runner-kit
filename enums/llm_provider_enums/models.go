@@ -399,6 +399,20 @@ func (m Model) DisplayName() string {
 var legacyModels = map[Model]bool{
 	ClaudeSonnet45: true,
 	ClaudeOpus45:   true,
+	// Opus 5 supersedes it, and the two changes are a PACKAGE: this line and
+	// agentTypeToDefaultModel moved together on purpose.
+	//
+	// Either alone is incoherent. Legacy while still the default would label
+	// and sort-last the very model a picker preselects; a new default while 4.8
+	// still read as current would leave two models both presenting as the
+	// frontier choice. ModelForTier hides the first case — the default wins its
+	// tier before the legacy check runs — so it would have been a UI
+	// contradiction with no test to catch it.
+	//
+	// 4.8 keeps earning its place for exactly the reason legacy exists: Bedrock
+	// model access is granted per account, Opus 5 shipped 2026-07-24, and an
+	// org without it enabled still needs a frontier Claude model to run.
+	ClaudeOpus48: true,
 	// GLM-5 supersedes it. Kept for the same reason as the 4.5-generation
 	// Claude models: Bedrock model access is granted per account, and an org
 	// with 4.7 enabled and not 5 should still have something to run.

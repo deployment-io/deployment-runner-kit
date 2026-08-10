@@ -38,13 +38,13 @@ import (
 // point of keeping Model logical — see PLAN_provider_centric_llm_keys.md §3.3
 // and §4.1, where the prefix's second job (disambiguating the harness) is what
 // made stripping it dangerous until AgentType became explicit.
+//
 // ⚠️ ORDER IS LOAD-BEARING and new entries go at the END. ModelForTier walks
 // this list and takes the first non-legacy match, so inserting a model
 // mid-list silently changes what "high complexity" resolves to for every
-// existing Task. Appending cannot: Opus 4.8 stays the frontier answer for
-// claude-code and opencode even with Opus 5 now in the catalogue, and moving
-// that on should be a deliberate edit to modelToTier, not a side effect of
-// adding a model.
+// existing Task. Appending cannot change it on its own — which is the point.
+// Moving the frontier answer on is a deliberate edit to agentTypeToDefaultModel
+// or legacyModels, never a side effect of adding a model.
 var agentTypeToModels = map[AgentType][]Model{
 	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48,
 		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5},
@@ -381,7 +381,12 @@ func preferenceRank(p Provider) int {
 // differently for the same agent.
 var agentTypeToDefaultModel = map[AgentType]Model{
 	// Anthropic's documented pick for agentic coding.
-	ClaudeCode: ClaudeOpus48,
+	//
+	// ⚠️ Moving this moves TWO things: what a picker preselects, and what a
+	// high-complexity session resolves to — the default wins its tier outright
+	// in ModelForTier. Change it deliberately, never as a side effect of adding
+	// a model.
+	ClaudeCode: ClaudeOpus5,
 	// OpenAI's recommended default for Codex.
 	Codex: Gpt55,
 	// Balanced, and reuses an org's existing Anthropic credential — so opencode
