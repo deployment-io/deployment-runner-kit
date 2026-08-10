@@ -403,6 +403,17 @@ var legacyModels = map[Model]bool{
 	// Claude models: Bedrock model access is granted per account, and an org
 	// with 4.7 enabled and not 5 should still have something to run.
 	Glm47: true,
+	// Nova Pro caps OUTPUT at 8k, which is the limit that kept Devstral 2 and
+	// Mistral Large 3 out of this catalogue entirely — a coding agent writing
+	// file edits cannot work in it. Qwen3 Coder 480B is newer, has 65k of
+	// output and costs a quarter as much, so nothing recommends Nova Pro on
+	// merit any more.
+	//
+	// Kept rather than deleted because its wire id is in Task documents
+	// already: removing it would make GetModel fail for those, and a re-run
+	// would pass the logical id through to opencode and fail there. Legacy is
+	// the honest position — offerable, labelled, and last in every picker.
+	NovaProV1: true,
 }
 
 // IsLegacy reports whether a newer generation of this model exists.
