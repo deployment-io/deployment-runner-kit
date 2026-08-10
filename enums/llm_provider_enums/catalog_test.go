@@ -428,7 +428,7 @@ func TestBedrockModelsHaveAConsideredGeographyRule(t *testing.T) {
 		if !considered[m.Vendor()] {
 			t.Errorf("model %s is on Bedrock but vendor %v has no considered "+
 				"geography rule — check models.dev for whether opencode lists "+
-				"its ids prefixed, then add it here and to bedrockGeographyVendors",
+				"its ids prefixed, then add it here and to opencodeBedrockGeographyVendors",
 				m, m.Vendor())
 		}
 	}

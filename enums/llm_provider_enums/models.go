@@ -185,7 +185,7 @@ func (m Model) Vendor() Vendor {
 	return modelToVendor[m]
 }
 
-// bedrockGeographyVendors names the vendors whose Bedrock models opencode
+// opencodeBedrockGeographyVendors names the vendors whose Bedrock models opencode
 // lists UNDER their cross-region geography prefix.
 //
 // This mirrors OPENCODE's registry (models.dev), not Bedrock's. Bedrock
@@ -205,18 +205,27 @@ func (m Model) Vendor() Vendor {
 // An absent vendor means "strip", which is the right default for a new vendor
 // and, when wrong, fails loudly — opencode answers ProviderModelNotFoundError
 // rather than quietly running something else.
-var bedrockGeographyVendors = map[Vendor]bool{
+var opencodeBedrockGeographyVendors = map[Vendor]bool{
 	VendorAnthropic: true,
 	VendorMeta:      true,
 }
 
-// UsesBedrockGeographyPrefix reports whether opencode expects this vendor's
+// OpencodeKeepsBedrockGeography reports whether OPENCODE expects this vendor's
 // Bedrock ids to keep their cross-region prefix.
+//
+// ⚠️ OPENCODE-SPECIFIC, and named so on purpose. This is not a statement about
+// what Bedrock accepts. Bedrock publishes eu.amazon.nova-pro-v1:0 and will
+// serve it — discovery found that id there. Only opencode's registry lacks an
+// entry for it, and only opencode routes through that registry.
+//
+// So this must NEVER be applied to claude-code, which reaches Bedrock directly
+// and correctly uses the prefixed profile id for EVERY vendor, Amazon included.
+// A neutral-sounding name here would invite exactly that mistake.
 //
 // VendorUnknown answers true, so a model outside the catalogue passes through
 // untouched rather than being rewritten on a guess.
-func (v Vendor) UsesBedrockGeographyPrefix() bool {
-	return v == VendorUnknown || bedrockGeographyVendors[v]
+func (v Vendor) OpencodeKeepsBedrockGeography() bool {
+	return v == VendorUnknown || opencodeBedrockGeographyVendors[v]
 }
 
 // modelProviderID overrides the id used at a specific provider, for models

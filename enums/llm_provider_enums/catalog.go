@@ -213,7 +213,7 @@ func OpencodeModelID(modelID string, p Provider, vendor Vendor) string {
 	}
 	// opencode routes Bedrock through its own registry (models.dev), which
 	// carries geography-prefixed ids for some vendors and only base ids for
-	// others — see bedrockGeographyVendors for the split and the counts.
+	// others — see opencodeBedrockGeographyVendors for the split and the counts.
 	//
 	// Keeping the prefix matters where it belongs: for Anthropic the prefixed
 	// id IS the cross-region inference profile, which newer Claude models on
@@ -226,7 +226,7 @@ func OpencodeModelID(modelID string, p Provider, vendor Vendor) string {
 	//
 	// Only the geography goes; the dated revision stays, since that is what
 	// discovery exists to find.
-	if p == AWSBedrock && !vendor.UsesBedrockGeographyPrefix() {
+	if p == AWSBedrock && !vendor.OpencodeKeepsBedrockGeography() {
 		modelID = stripBedrockGeography(modelID)
 	}
 	return name + "/" + modelID
