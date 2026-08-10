@@ -107,6 +107,16 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		NovaProV1:      "nova-pro-v1",
 		ClaudeSonnet45: "claude-sonnet-4-5",
 		ClaudeOpus45:   "claude-opus-4-5",
+		ClaudeSonnet5:  "claude-sonnet-5",
+		ClaudeOpus5:    "claude-opus-5",
+		ClaudeFable5:   "claude-fable-5",
+		Qwen3Coder480B: "qwen3-coder-480b",
+		Qwen3CoderNext: "qwen3-coder-next",
+		DeepSeekV32:    "deepseek-v3.2",
+		Glm47:          "glm-4.7",
+		Glm5:           "glm-5",
+		MinimaxM25:     "minimax-m2.5",
+		Grok43:         "grok-4.3",
 	}
 	// EXHAUSTIVE. Without this, adding a model leaves its wire id unpinned and
 	// this test still passes — which is exactly what happened when Sonnet 4.5
@@ -157,11 +167,19 @@ func TestCatalog_EveryHarnessModelPairHasAtLeastOneProvider(t *testing.T) {
 	}
 }
 
-func TestCatalog_BedrockModelsAllHaveAProfilePrefix(t *testing.T) {
-	// modelToProviders claiming AWSBedrock without a prefix means discovery has
-	// nothing to match on, and the logical id reaches Bedrock verbatim — the
-	// exact failure the live smoke test produced ("The provided model
-	// identifier is invalid").
+// A Bedrock model reaches its concrete id one of TWO ways, and must declare
+// exactly one of them.
+//
+//	profile prefix   — a cross-region inference profile exists; discovery
+//	                   resolves the dated revision at run time
+//	declared id      — no profile exists (the Qwen/DeepSeek/GLM/MiniMax/Grok
+//	                   lineup), so the id is stated in modelProviderID
+//
+// NEITHER means the logical id reaches Bedrock verbatim — "The provided model
+// identifier is invalid", which is how the first live run failed. BOTH is a
+// contradiction: discovery would overwrite the declared id, so one of the two
+// statements is dead and nobody could tell which was intended.
+func TestCatalog_BedrockModelsDeclareExactlyOneIDMechanism(t *testing.T) {
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
 		onBedrock := false
 		for _, p := range m.Providers() {
@@ -169,11 +187,47 @@ func TestCatalog_BedrockModelsAllHaveAProfilePrefix(t *testing.T) {
 				onBedrock = true
 			}
 		}
-		if onBedrock && m.BedrockProfilePrefix() == "" {
-			t.Errorf("model %s lists AWSBedrock but has no profile prefix; discovery cannot resolve it", m)
-		}
-		if !onBedrock && m.BedrockProfilePrefix() != "" {
+		prefix := m.BedrockProfilePrefix() != ""
+		declared := m.IDFor(AWSBedrock) != m.String()
+
+		switch {
+		case onBedrock && !prefix && !declared:
+			t.Errorf("model %s lists AWSBedrock but declares neither a profile prefix nor a Bedrock id; the logical id would reach the API verbatim", m)
+		case onBedrock && prefix && declared:
+			t.Errorf("model %s declares BOTH a profile prefix and a Bedrock id; discovery would overwrite the declared id, so one of them is dead", m)
+		case !onBedrock && prefix:
 			t.Errorf("model %s has a profile prefix but does not list AWSBedrock as a provider", m)
+		case !onBedrock && declared:
+			t.Errorf("model %s declares a Bedrock id but does not list AWSBedrock as a provider", m)
+		}
+	}
+}
+
+// The declared ids are what OPENCODE resolves against, so their shape is a
+// contract with models.dev rather than with Bedrock. Each must carry the
+// vendor segment models.dev uses — a bare "glm-5" is not findable there, and
+// that is precisely the class of failure the Nova run exposed.
+func TestCatalog_DeclaredBedrockIDsCarryTheirVendorSegment(t *testing.T) {
+	segment := map[Vendor]string{
+		VendorQwen:     "qwen.",
+		VendorDeepSeek: "deepseek.",
+		VendorZAI:      "zai.",
+		VendorMiniMax:  "minimax.",
+		VendorXAI:      "xai.",
+		VendorAmazon:   "amazon.",
+	}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		id := m.IDFor(AWSBedrock)
+		if id == m.String() {
+			continue // resolved by discovery, not declared
+		}
+		want, ok := segment[m.Vendor()]
+		if !ok {
+			t.Errorf("model %s declares Bedrock id %q but its vendor %v has no known registry segment", m, id, m.Vendor())
+			continue
+		}
+		if !strings.HasPrefix(id, want) {
+			t.Errorf("declared Bedrock id for %s is %q, want it to start with %q — opencode looks it up in models.dev by that name", m, id, want)
 		}
 	}
 }
@@ -342,18 +396,132 @@ func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
 	cases := []struct {
 		model    string
 		provider Provider
+		vendor   Vendor
 		want     string
 	}{
-		{"claude-sonnet-4-6", AnthropicDirect, "anthropic/claude-sonnet-4-6"},
-		{"gpt-5.5", OpenAIDirect, "openai/gpt-5.5"},
-		{"nova-pro-v1", AWSBedrock, "amazon-bedrock/nova-pro-v1"},
-		// The runner substitutes the discovered profile id before rendering, so
-		// the prefix must survive a model string the catalogue never held.
-		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/eu.amazon.nova-pro-v1:0"},
+		{"claude-sonnet-4-6", AnthropicDirect, VendorAnthropic, "anthropic/claude-sonnet-4-6"},
+		{"gpt-5.5", OpenAIDirect, VendorOpenAI, "openai/gpt-5.5"},
+		{"nova-pro-v1", AWSBedrock, VendorAmazon, "amazon-bedrock/nova-pro-v1"},
+
+		// Amazon's own models have NO geography-prefixed entries in opencode's
+		// registry, so the prefix discovery found must come off. This is the
+		// case a live Nova run failed on.
+		{"eu.amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon, "amazon-bedrock/amazon.nova-pro-v1:0"},
+		{"us.amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon, "amazon-bedrock/amazon.nova-pro-v1:0"},
+
+		// Anthropic's ARE in the registry prefixed, and the prefixed id IS the
+		// cross-region inference profile — which newer Claude models on Bedrock
+		// generally require. Stripping here would quietly request on-demand
+		// throughput they may not offer, so it must pass through untouched.
+		{"eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock, VendorAnthropic,
+			"amazon-bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0"},
+		{"us.anthropic.claude-opus-4-5-20251101-v1:0", AWSBedrock, VendorAnthropic,
+			"amazon-bedrock/us.anthropic.claude-opus-4-5-20251101-v1:0"},
+
+		// An id that already carries no geography is left alone either way.
+		{"amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon, "amazon-bedrock/amazon.nova-pro-v1:0"},
+
+		// A model outside the catalogue has no vendor, and an unknown vendor
+		// must not be rewritten on a guess.
+		{"eu.acme.something-v1:0", AWSBedrock, VendorUnknown,
+			"amazon-bedrock/eu.acme.something-v1:0"},
+
+		// Only Bedrock is touched — an id starting with a geography-looking
+		// token at another provider must survive.
+		{"eu.something", AnthropicDirect, VendorAnthropic, "anthropic/eu.something"},
+		{"eu.something", OpenAIDirect, VendorAmazon, "openai/eu.something"},
 	}
 	for _, c := range cases {
-		if got := OpencodeModelID(c.model, c.provider); got != c.want {
-			t.Errorf("OpencodeModelID(%q, %s) = %q, want %q", c.model, c.provider, got, c.want)
+		if got := OpencodeModelID(c.model, c.provider, c.vendor); got != c.want {
+			t.Errorf("OpencodeModelID(%q, %s, %v) = %q, want %q", c.model, c.provider, c.vendor, got, c.want)
+		}
+	}
+}
+
+// Every geography AWS uses must be recognised, for a vendor that strips. A
+// prefix missing from the list is a silent pass-through: the id keeps its
+// geography, opencode has no entry for it, and the run fails at spawn.
+func TestOpencodeModelID_StripsEveryGeography(t *testing.T) {
+	for _, geo := range []string{"eu.", "us.", "au.", "jp.", "apac.", "global."} {
+		got := OpencodeModelID(geo+"amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon)
+		if want := "amazon-bedrock/amazon.nova-pro-v1:0"; got != want {
+			t.Errorf("geography %q: got %q, want %q", geo, got, want)
+		}
+	}
+}
+
+// The strip decision belongs to the vendor, so it must follow the VENDOR
+// argument rather than the id's own vendor segment. These two disagree on
+// purpose: a caller that passed the wrong vendor should produce the wrong
+// answer here, which is what makes the argument load-bearing rather than
+// decorative.
+func TestOpencodeModelID_FollowsVendorArgNotTheIDText(t *testing.T) {
+	if got := OpencodeModelID("eu.amazon.nova-pro-v1:0", AWSBedrock, VendorAnthropic); got !=
+		"amazon-bedrock/eu.amazon.nova-pro-v1:0" {
+		t.Errorf("VendorAnthropic should keep the prefix, got %q", got)
+	}
+	if got := OpencodeModelID("eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock, VendorAmazon); got !=
+		"amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0" {
+		t.Errorf("VendorAmazon should strip the prefix, got %q", got)
+	}
+}
+
+// Every model the catalogue offers on Bedrock must have a vendor whose strip
+// rule was actually considered. Adding a Bedrock-hosted model from a new vendor
+// fails HERE, at CI, rather than at spawn on a customer's runner — which is the
+// whole reason the rule hangs off the Vendor enum.
+func TestBedrockModelsHaveAConsideredGeographyRule(t *testing.T) {
+	// ⚠️ KEYED BY MODEL, NOT VENDOR, even though the RULE is vendor-level. Two
+	// vendors split per model in the registry — meta (llama3 bare, llama4 us.)
+	// and deepseek (v3.2 bare, r1 us.) — so a vendor-keyed guard would wave
+	// DeepSeek R1 through the moment V3.2 is present, and R1 would break
+	// silently. Model-keyed costs one line per model and cannot be outgrown.
+	const (
+		keep  = true  // models.dev carries geography-prefixed entries
+		strip = false // models.dev carries only the base id
+	)
+	considered := map[Model]bool{
+		ClaudeHaiku45:  keep,
+		ClaudeSonnet45: keep,
+		ClaudeSonnet46: keep,
+		ClaudeOpus45:   keep,
+		ClaudeOpus48:   keep,
+		ClaudeSonnet5:  keep,
+		ClaudeOpus5:    keep,
+		ClaudeFable5:   keep,
+		NovaProV1:      strip,
+		Qwen3Coder480B: strip,
+		Qwen3CoderNext: strip,
+		DeepSeekV32:    strip,
+		Glm47:          strip,
+		Glm5:           strip,
+		MinimaxM25:     strip,
+		Grok43:         strip,
+	}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		onBedrock := false
+		for _, p := range m.Providers() {
+			if p == AWSBedrock {
+				onBedrock = true
+			}
+		}
+		if !onBedrock {
+			continue
+		}
+		want, ok := considered[m]
+		if !ok {
+			t.Errorf("model %s is on Bedrock but its geography rule was never "+
+				"checked — look it up in models.dev, then record it here and, if it "+
+				"needs keeping, in opencodeBedrockGeographyVendors", m)
+			continue
+		}
+		// The vendor-level rule must agree with what was checked per model. A
+		// mismatch means that vendor has split and the rule can no longer be
+		// stated vendor-wide.
+		if got := m.Vendor().OpencodeKeepsBedrockGeography(); got != want {
+			t.Errorf("model %s: vendor %v says keep=%v but the registry says keep=%v — "+
+				"this vendor now splits per model, so the rule needs a per-model override",
+				m, m.Vendor(), got, want)
 		}
 	}
 }
@@ -364,14 +532,14 @@ func TestOpencodeModelID_EmptyForProvidersOpencodeCannotUse(t *testing.T) {
 	// unsupported. agentTypeToProviders already excludes it; returning "" here is
 	// the second line of defence, so a caller that skips that check still
 	// cannot build a usable id.
-	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription); got != "" {
+	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription, VendorAnthropic); got != "" {
 		t.Errorf("OpencodeModelID with AnthropicSubscription = %q, want \"\"", got)
 	}
-	if got := OpencodeModelID("claude-opus-4-8", GoogleVertex); got != "" {
+	if got := OpencodeModelID("claude-opus-4-8", GoogleVertex, VendorAnthropic); got != "" {
 		t.Errorf("OpencodeModelID with GoogleVertex = %q, want \"\" (not wired)", got)
 	}
 	// A malformed "/model" is worse than nothing — it looks valid.
-	if got := OpencodeModelID("", AWSBedrock); got != "" {
+	if got := OpencodeModelID("", AWSBedrock, VendorAmazon); got != "" {
 		t.Errorf("OpencodeModelID with empty model = %q, want \"\"", got)
 	}
 }
@@ -389,11 +557,19 @@ func TestOpencodeProviderNamesCoverEveryReachableProvider(t *testing.T) {
 }
 
 func TestIDFor_DefaultsToTheLogicalID(t *testing.T) {
-	// The override map is empty on purpose, so every model currently reports
-	// its logical id at every provider. This pins the FALLBACK, which is the
-	// behaviour that matters when no override exists.
+	// Overrides exist only for Bedrock, and only for the models with no
+	// inference profile. Everywhere else the logical id must come back
+	// unchanged — this pins the FALLBACK, which is what almost every lookup
+	// hits.
+	//
+	// Deliberately asserts on EVERY provider except that one pair, rather than
+	// listing the models expected to be clean: an override added to a second
+	// provider by accident fails here rather than at spawn.
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
 		for _, p := range m.Providers() {
+			if p == AWSBedrock && m.BedrockProfilePrefix() == "" {
+				continue // declared id, covered by the two tests above
+			}
 			if got := m.IDFor(p); got != m.String() {
 				t.Errorf("IDFor(%s, %s) = %q, want the logical id %q", m, p, got, m)
 			}
@@ -422,17 +598,22 @@ func TestResolvesModelIDAtRuntime_IsAPropertyNotAProviderCheck(t *testing.T) {
 }
 
 func TestRuntimeResolvedProvidersHaveDiscoveryInput(t *testing.T) {
-	// A provider that resolves ids at runtime needs something to match on. For
-	// Bedrock that is the version-pinned profile prefix — without it discovery
-	// has nothing to search for and the logical id reaches the API verbatim,
-	// which is exactly how the first live run failed.
+	// A provider that resolves ids at runtime needs something to match on, OR a
+	// declared id to fall back to. Neither means the logical id reaches the API
+	// verbatim, which is exactly how the first live run failed.
+	//
+	// ResolvesModelIDAtRuntime is a property of the PROVIDER, so it stays true
+	// for Bedrock even for models that have nothing to discover. That is not a
+	// contradiction: discovery runs, finds no profile, logs it, and leaves the
+	// declared id in place — see applyAgentModelEnv, which only overwrites on a
+	// non-empty result.
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
 		for _, p := range m.Providers() {
-			if !p.ResolvesModelIDAtRuntime() {
+			if !p.ResolvesModelIDAtRuntime() || p != AWSBedrock {
 				continue
 			}
-			if p == AWSBedrock && m.BedrockProfilePrefix() == "" {
-				t.Errorf("%s is served by %s, which resolves ids at runtime, but it has no profile prefix to discover with", m, p)
+			if m.BedrockProfilePrefix() == "" && m.IDFor(p) == m.String() {
+				t.Errorf("%s is served by %s, which resolves ids at runtime, but it has neither a profile prefix to discover with nor a declared id to fall back to", m, p)
 			}
 		}
 	}
@@ -737,6 +918,74 @@ func TestAgentType_DefaultModelIsOneItRuns(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Retirement. Disabling is the soft delete for a persisted enum: the wire id is
+// in Task documents, so the entry must keep resolving even once nothing offers
+// it. These cases pin BOTH halves — a disabled model that stopped resolving
+// would be a delete with extra steps, and one that kept being offered would be
+// no retirement at all.
+// ---------------------------------------------------------------------------
+
+func TestDisabled_StillResolvesForTasksThatAlreadyHoldIt(t *testing.T) {
+	if !NovaProV1.IsDisabled() {
+		t.Fatal("this test needs a disabled model to be meaningful")
+	}
+	// The reason we disable instead of deleting: a stored Task holds this
+	// string, and every one of these is on the path from that string to a
+	// running agent, or to a rendered row in the UI.
+	m, err := GetModel("nova-pro-v1")
+	if err != nil || m != NovaProV1 {
+		t.Fatalf("GetModel(\"nova-pro-v1\") = %v, %v — a retired model must still parse, or history and in-flight Jobs break", m, err)
+	}
+	if m.DisplayName() == "" || m.DisplayName() == m.String() {
+		t.Errorf("DisplayName() = %q; a retired model must still render as itself", m.DisplayName())
+	}
+	if m.Vendor() != VendorAmazon {
+		t.Errorf("Vendor() = %v, want VendorAmazon", m.Vendor())
+	}
+	// Capability is not offering: the harness can still RUN it, which is what
+	// keeps ProvidersFor non-empty and lets an existing Job spawn.
+	if !Opencode.Supports(m) {
+		t.Error("Opencode.Supports(nova-pro-v1) = false; a retired model must stay runnable for Tasks that already chose it")
+	}
+	if len(ProvidersFor(Opencode, m)) == 0 {
+		t.Error("ProvidersFor returned nothing for a retired model; it would fail at spawn as 'not possible'")
+	}
+	if m.IDFor(AWSBedrock) == "" {
+		t.Error("IDFor returned empty for a retired model")
+	}
+}
+
+func TestDisabled_IsOfferedNowhere(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		for _, m := range h.Models() {
+			if m.IsDisabled() {
+				t.Errorf("%s.Models() offers retired model %s", h, m)
+			}
+		}
+		// Every tier, since a recommendation is the one path that could hand a
+		// user a retired model they never picked.
+		for _, tr := range []Tier{TierFast, TierBalanced, TierFrontier} {
+			if got := ModelForTier(h, tr); got.IsDisabled() {
+				t.Errorf("ModelForTier(%s, %s) recommends retired model %s", h, tr, got)
+			}
+		}
+		// AllModels is the deliberate exception — it answers capability.
+		if len(h.AllModels()) < len(h.Models()) {
+			t.Errorf("%s.AllModels() is smaller than Models(); it must be the superset", h)
+		}
+	}
+}
+
+// A default that is retired would preselect a model no picker lists.
+func TestDisabled_NoAgentDefaultsToARetiredModel(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		if h.DefaultModel().IsDisabled() {
+			t.Errorf("%s defaults to retired model %s", h, h.DefaultModel())
+		}
+	}
+}
+
 func TestModelsFor_OffersOnlyWhatTheOrgCanServe(t *testing.T) {
 	bedrockOnly := func(p Provider) bool { return p == AWSBedrock }
 	got := ModelsFor(Opencode, bedrockOnly)
@@ -744,9 +993,15 @@ func TestModelsFor_OffersOnlyWhatTheOrgCanServe(t *testing.T) {
 	for _, m := range got {
 		names[m] = true
 	}
-	// Nova is Bedrock-only, so a Bedrock org must see it.
-	if !names[NovaProV1] {
-		t.Errorf("opencode/Bedrock omits nova-pro-v1; got %v", got)
+	// Qwen3 Coder is Bedrock-only, so a Bedrock org must see it. This was
+	// Nova's job until Nova was retired — which is what the next case checks.
+	if !names[Qwen3Coder480B] {
+		t.Errorf("opencode/Bedrock omits qwen3-coder-480b; got %v", got)
+	}
+	// ...and a RETIRED Bedrock-only model must not appear, however well the org
+	// is credentialed. Being serveable is not being offered.
+	if names[NovaProV1] {
+		t.Errorf("opencode/Bedrock still offers retired nova-pro-v1; got %v", got)
 	}
 	// Claude models are served by Bedrock too.
 	if !names[ClaudeSonnet46] {

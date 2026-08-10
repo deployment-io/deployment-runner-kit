@@ -1,6 +1,9 @@
 package llm_provider_enums
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // The catalogue: which (harness, model, provider) combinations are real.
 //
@@ -35,10 +38,23 @@ import "sort"
 // point of keeping Model logical — see PLAN_provider_centric_llm_keys.md §3.3
 // and §4.1, where the prefix's second job (disambiguating the harness) is what
 // made stripping it dangerous until AgentType became explicit.
+// ⚠️ ORDER IS LOAD-BEARING and new entries go at the END. ModelForTier walks
+// this list and takes the first non-legacy match, so inserting a model
+// mid-list silently changes what "high complexity" resolves to for every
+// existing Task. Appending cannot: Opus 4.8 stays the frontier answer for
+// claude-code and opencode even with Opus 5 now in the catalogue, and moving
+// that on should be a deliberate edit to modelToTier, not a side effect of
+// adding a model.
 var agentTypeToModels = map[AgentType][]Model{
-	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48},
-	Codex:      {Gpt55, Gpt53Codex, Gpt54},
-	Opencode:   {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1},
+	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48,
+		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5},
+	Codex: {Gpt55, Gpt53Codex, Gpt54},
+	Opencode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1,
+		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5,
+		// The Bedrock-only lineup. opencode is the only agent that can reach
+		// these: claude-code and codex each speak one vendor's API, while
+		// opencode routes by provider id — which is the reason it exists here.
+		Qwen3Coder480B, Qwen3CoderNext, DeepSeekV32, Glm47, Glm5, MinimaxM25, Grok43},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -63,6 +79,20 @@ var modelToProviders = map[Model][]Provider{
 	// subscription still serve them, and Bedrock is where they matter most.
 	ClaudeSonnet45: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	ClaudeOpus45:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeSonnet5:  {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeOpus5:    {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeFable5:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	// Bedrock-ONLY, like Nova and for the same reason: we have no direct
+	// provider for any of these vendors, so AWS is the whole route. An org
+	// without Bedrock configured will not see them at all — ModelsFor filters
+	// on what the org can actually serve.
+	Qwen3Coder480B: {AWSBedrock},
+	Qwen3CoderNext: {AWSBedrock},
+	DeepSeekV32:    {AWSBedrock},
+	Glm47:          {AWSBedrock},
+	Glm5:           {AWSBedrock},
+	MinimaxM25:     {AWSBedrock},
+	Grok43:         {AWSBedrock},
 }
 
 // agentProviderCapabilities lists which provider APIs each CLI can talk to.
@@ -101,8 +131,30 @@ var agentProviderCapabilities = map[AgentType][]Provider{
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
 }
 
-// Models returns the models this harness can run.
-func (h AgentType) Models() []Model { return agentTypeToModels[h] }
+// Models returns the models this harness OFFERS — retired ones excluded.
+//
+// Filtered here rather than at each call site because this is what every
+// offering path already reads, kit's SupportedModels and IsModelSupported
+// included. A disabled model therefore stops being creatable without kit
+// needing to learn the concept.
+//
+// Use AllModels when the question is capability or history rather than what to
+// offer.
+func (h AgentType) Models() []Model {
+	out := make([]Model, 0, len(agentTypeToModels[h]))
+	for _, m := range agentTypeToModels[h] {
+		if !m.IsDisabled() {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// AllModels returns every model this harness can run, INCLUDING retired ones.
+//
+// For callers asking what a harness is capable of, or rendering a model a Task
+// already holds. Offering paths want Models.
+func (h AgentType) AllModels() []Model { return agentTypeToModels[h] }
 
 // Providers returns the provider APIs this harness can talk to. Order carries
 // NO preference — see PreferredProvider.
@@ -113,6 +165,11 @@ func (h AgentType) Providers() []Provider { return agentProviderCapabilities[h] 
 func (m Model) Providers() []Provider { return modelToProviders[m] }
 
 // Supports reports whether the harness can run the model at all.
+//
+// Deliberately reads the FULL list, retired models included: a Task already
+// holding a disabled model is still runnable, and this answers capability
+// rather than what to offer. ProvidersFor depends on it, which is what keeps a
+// disabled model resolving at spawn instead of failing as "not possible".
 func (h AgentType) Supports(m Model) bool {
 	for _, candidate := range agentTypeToModels[h] {
 		if candidate == m {
@@ -195,14 +252,51 @@ func (p Provider) OpencodeName() string {
 // (eu.amazon.nova-pro-v1:0) for the logical one. The provider prefix is what
 // opencode routes on, so it must survive that substitution.
 //
+// vendor decides whether a Bedrock id keeps its cross-region geography prefix,
+// and is why this takes a Vendor rather than sniffing the id's own vendor
+// segment: the rule is a fact about who MAKES the model, so the type that
+// already carries that fact should state it. Pass VendorUnknown when the model
+// is not in the catalogue and the id will be left alone.
+//
 // Returns "" when the provider has no opencode representation, so callers get
 // an empty result rather than a malformed "/model" string.
-func OpencodeModelID(modelID string, p Provider) string {
+func OpencodeModelID(modelID string, p Provider, vendor Vendor) string {
 	name := p.OpencodeName()
 	if name == "" || modelID == "" {
 		return ""
 	}
+	// opencode routes Bedrock through its own registry (models.dev), which
+	// carries geography-prefixed ids for some vendors and only base ids for
+	// others — see opencodeBedrockGeographyVendors for the split and the counts.
+	//
+	// Keeping the prefix matters where it belongs: for Anthropic the prefixed
+	// id IS the cross-region inference profile, which newer Claude models on
+	// Bedrock generally require, so dropping to the base id would silently ask
+	// for on-demand throughput they may not offer.
+	//
+	// A live Nova run exposed the other direction. Discovery resolved
+	// eu.amazon.nova-pro-v1:0 and opencode rejected it with
+	// ProviderModelNotFoundError, suggesting amazon.nova-pro-v1:0.
+	//
+	// Only the geography goes; the dated revision stays, since that is what
+	// discovery exists to find.
+	if p == AWSBedrock && !vendor.OpencodeKeepsBedrockGeography() {
+		modelID = stripBedrockGeography(modelID)
+	}
 	return name + "/" + modelID
+}
+
+// stripBedrockGeography removes the cross-region prefix from a Bedrock id.
+//
+// WHETHER to call this is the vendor's business, not this function's — it just
+// performs the removal.
+func stripBedrockGeography(modelID string) string {
+	for _, geo := range []string{"eu.", "us.", "au.", "jp.", "apac.", "global."} {
+		if rest, found := strings.CutPrefix(modelID, geo); found {
+			return rest
+		}
+	}
+	return modelID
 }
 
 // ConfigurableProviders returns every provider an org can actually configure,
@@ -310,7 +404,7 @@ func (h AgentType) DefaultModel() Model { return agentTypeToDefaultModel[h] }
 // learn what an organization is.
 func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
 	var out []Model
-	for _, m := range agentTypeToModels[h] {
+	for _, m := range h.Models() {
 		for _, p := range ProvidersFor(h, m) {
 			if isConfigured(p) {
 				out = append(out, m)
