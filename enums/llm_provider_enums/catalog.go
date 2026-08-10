@@ -205,38 +205,49 @@ func OpencodeModelID(modelID string, p Provider) string {
 	if name == "" || modelID == "" {
 		return ""
 	}
-	// opencode wants Bedrock's BASE model id, not the region-prefixed inference
-	// profile — it applies the geography itself. claude-code is the opposite: it
-	// takes the profile id verbatim. Same provider, same model, two renderings,
-	// which is why this belongs on the agent axis rather than the provider one.
+	// opencode routes Bedrock through its own registry (models.dev), which is
+	// ASYMMETRIC about the cross-region geography prefix:
 	//
-	// A live Nova run proved it: discovery resolved eu.amazon.nova-pro-v1:0 and
-	// opencode rejected it with ProviderModelNotFoundError, suggesting
-	// "amazon.nova-pro-v1:0".
+	//   anthropic.*  base AND eu./us./au./jp./global. variants
+	//   amazon.*     base ONLY — no geography-prefixed entries at all
 	//
-	// The prefix is stripped rather than the discovery skipped, because
-	// discovery is what finds the exact dated revision — anthropic's ids carry
-	// one (…claude-sonnet-4-5-20250929-v1:0) and hardcoding those would need a
-	// release per Bedrock model launch. Strip the geography, keep the version.
+	// So the prefix is stripped for Amazon's own models and KEPT for everyone
+	// else. Keeping it matters: for Anthropic the prefixed id IS the
+	// cross-region inference profile, which newer Claude models on Bedrock
+	// generally require — dropping to the base id would silently ask for
+	// on-demand throughput they may not offer.
+	//
+	// A live Nova run exposed this. Discovery resolved eu.amazon.nova-pro-v1:0
+	// and opencode rejected it with ProviderModelNotFoundError, suggesting
+	// amazon.nova-pro-v1:0.
+	//
+	// Only the geography goes; the dated revision stays, since that is what
+	// discovery exists to find.
 	if p == AWSBedrock {
-		modelID = strings.TrimPrefix(modelID, bedrockGeographyPrefix(modelID))
+		modelID = stripBedrockGeographyForOpencode(modelID)
 	}
 	return name + "/" + modelID
 }
 
-// bedrockGeographyPrefix returns the cross-region prefix on an inference
-// profile id, or "" when there is none.
+// stripBedrockGeographyForOpencode removes the cross-region prefix from an
+// Amazon-vendor Bedrock id, leaving every other vendor untouched.
 //
-// Matches the prefixes deployment-runner's discovery produces. Kept here
-// because the stripping is a catalogue-level rendering rule, and a caller that
-// re-derived it would be one more copy of Bedrock's naming scheme.
-func bedrockGeographyPrefix(modelID string) string {
-	for _, prefix := range []string{"eu.", "us.", "apac."} {
-		if strings.HasPrefix(modelID, prefix) {
-			return prefix
+// Mirrors OPENCODE's registry, not Bedrock's: Bedrock does publish
+// eu.amazon.nova-pro-v1:0 — discovery finds it — but opencode has no entry for
+// it and cannot route it.
+func stripBedrockGeographyForOpencode(modelID string) string {
+	for _, geo := range []string{"eu.", "us.", "au.", "jp.", "apac.", "global."} {
+		rest, found := strings.CutPrefix(modelID, geo)
+		if !found {
+			continue
 		}
+		// Only Amazon's own models lack geography-prefixed registry entries.
+		if strings.HasPrefix(rest, "amazon.") {
+			return rest
+		}
+		return modelID
 	}
-	return ""
+	return modelID
 }
 
 // ConfigurableProviders returns every provider an org can actually configure,

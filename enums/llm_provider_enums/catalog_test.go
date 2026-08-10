@@ -347,23 +347,27 @@ func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
 		{"claude-sonnet-4-6", AnthropicDirect, "anthropic/claude-sonnet-4-6"},
 		{"gpt-5.5", OpenAIDirect, "openai/gpt-5.5"},
 		{"nova-pro-v1", AWSBedrock, "amazon-bedrock/nova-pro-v1"},
-		// The runner substitutes the discovered profile id before rendering, and
-		// opencode wants Bedrock's BASE id — it applies the geography itself.
-		// This case previously asserted the prefix survived, which is what a
-		// live Nova run disproved: opencode rejected
-		// "amazon-bedrock/eu.amazon.nova-pro-v1:0" with
-		// ProviderModelNotFoundError, suggesting "amazon.nova-pro-v1:0".
+
+		// Amazon's own models have NO geography-prefixed entries in opencode's
+		// registry, so the prefix discovery found must come off. This is the
+		// case a live Nova run failed on.
 		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
-		// The VERSION must survive the strip — only the geography goes. Losing
-		// the dated revision would put us back to guessing which one Bedrock
-		// has, which is the whole reason discovery exists.
+		{"us.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
+
+		// Anthropic's ARE in the registry prefixed, and the prefixed id IS the
+		// cross-region inference profile — which newer Claude models on Bedrock
+		// generally require. Stripping here would quietly request on-demand
+		// throughput they may not offer, so it must pass through untouched.
 		{"eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock,
-			"amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0"},
+			"amazon-bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0"},
 		{"us.anthropic.claude-opus-4-5-20251101-v1:0", AWSBedrock,
-			"amazon-bedrock/anthropic.claude-opus-4-5-20251101-v1:0"},
-		{"apac.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
-		// Only Bedrock strips — a vendor id that happens to start with a
-		// geography-looking token elsewhere must be left alone.
+			"amazon-bedrock/us.anthropic.claude-opus-4-5-20251101-v1:0"},
+
+		// An id that already carries no geography is left alone either way.
+		{"amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
+
+		// Only Bedrock is touched — a vendor id starting with a
+		// geography-looking token elsewhere must survive.
 		{"eu.something", AnthropicDirect, "anthropic/eu.something"},
 	}
 	for _, c := range cases {
