@@ -41,6 +41,30 @@ const (
 	ClaudeSonnet45
 	ClaudeOpus45
 
+	// The current Claude generation. Sonnet 5 is the everyday coding model and
+	// Opus 5 the frontier one; Fable 5 is a SPECIALIST (creative writing and
+	// analysis) that costs twice Opus 5, so it is offered but never resolved
+	// into by tier — Opus 4.8 and Opus 5 both precede it in agentTypeToModels.
+	ClaudeSonnet5
+	ClaudeOpus5
+	ClaudeFable5
+
+	// Bedrock-only models from vendors with no direct provider here. These are
+	// what makes opencode worth having: BYO-model at a fraction of the frontier
+	// price, on credentials the org already holds.
+	//
+	// ⚠️ ALL SEVEN ARE BASE-ID-ONLY ON BEDROCK — no cross-region inference
+	// profile exists for any of them, so discovery finds nothing and their
+	// concrete ids are DECLARED in modelProviderID rather than resolved. That is
+	// the opposite of every model above, where the id is deliberately late-bound.
+	Qwen3Coder480B
+	Qwen3CoderNext
+	DeepSeekV32
+	Glm47
+	Glm5
+	MinimaxM25
+	Grok43
+
 	MaxModel // always add models before MaxModel
 )
 
@@ -57,6 +81,20 @@ var modelToString = map[Model]string{
 	NovaProV1:      "nova-pro-v1",
 	ClaudeSonnet45: "claude-sonnet-4-5",
 	ClaudeOpus45:   "claude-opus-4-5",
+	ClaudeSonnet5:  "claude-sonnet-5",
+	ClaudeOpus5:    "claude-opus-5",
+	ClaudeFable5:   "claude-fable-5",
+	// Logical ids, in the same style as every other entry — NOT the Bedrock
+	// ids. "qwen3-coder-480b", not "qwen.qwen3-coder-480b-a35b-v1:0": the
+	// vendor segment and parameter-count suffix are Bedrock's naming, and
+	// baking them into the wire format would tie a stored Task to one provider.
+	Qwen3Coder480B: "qwen3-coder-480b",
+	Qwen3CoderNext: "qwen3-coder-next",
+	DeepSeekV32:    "deepseek-v3.2",
+	Glm47:          "glm-4.7",
+	Glm5:           "glm-5",
+	MinimaxM25:     "minimax-m2.5",
+	Grok43:         "grok-4.3",
 }
 
 var stringToModel = func() map[string]Model {
@@ -86,18 +124,6 @@ func GetModel(s string) (Model, error) {
 	return 0, fmt.Errorf("unknown model id %q", s)
 }
 
-// modelToBedrockFamily maps a logical model to the Bedrock "family token"
-// shared by every concrete inference profile for it.
-//
-// It deliberately stops at the family. A live run turned up two id shapes in
-// one account — `anthropic.claude-sonnet-5` and
-// `anthropic.claude-sonnet-4-5-20250929-v1:0` — so the version and revision
-// come from discovery, not from here. This map only needs to be right about
-// which family a model belongs to, which changes rarely.
-//
-// Absent entry = not available on Bedrock (the GPT models). Keep in step with
-// modelToProviders: a model listing AWSBedrock as a provider needs a family
-// here, and catalog_test.go enforces exactly that.
 // modelToBedrockProfilePrefix maps a logical model to the VERSION-PINNED
 // prefix shared by every concrete inference profile for that exact model.
 //
@@ -109,8 +135,15 @@ func GetModel(s string) (Model, error) {
 // left to discovery, because those genuinely vary per region and account. The
 // model VERSION is not something to guess at.
 //
-// Absent entry = not available on Bedrock (the GPT models). Kept in step with
-// modelToProviders and enforced by catalog_test.go.
+// An absent entry means one of TWO different things, which is why
+// TestCatalog_BedrockModelsDeclareExactlyOneIDMechanism exists:
+//
+//	not served by Bedrock at all           — the GPT models
+//	served, but with NO inference profile  — declared in modelProviderID
+//
+// The second case is the whole Bedrock-only lineup (Qwen, DeepSeek, GLM,
+// MiniMax, Grok). Nothing to discover means nothing to pin, so their ids are
+// stated outright instead.
 var modelToBedrockProfilePrefix = map[Model]string{
 	ClaudeHaiku45:  "claude-haiku-4-5",
 	ClaudeSonnet46: "claude-sonnet-4-6",
@@ -120,6 +153,13 @@ var modelToBedrockProfilePrefix = map[Model]string{
 	NovaProV1:      "nova-pro-v1",
 	ClaudeSonnet45: "claude-sonnet-4-5",
 	ClaudeOpus45:   "claude-opus-4-5",
+	// The 5-generation prefixes cannot collide with their 4.x siblings under
+	// Contains(): "claude-opus-5" is not a substring of
+	// "claude-opus-4-5-20251101-v1:0", and vice versa. That is the property the
+	// version pinning exists to hold, and the reason these read oddly short.
+	ClaudeSonnet5: "claude-sonnet-5",
+	ClaudeOpus5:   "claude-opus-5",
+	ClaudeFable5:  "claude-fable-5",
 }
 
 // BedrockProfilePrefix returns the version-pinned prefix for a model, or ""
@@ -147,6 +187,14 @@ const (
 	VendorMeta
 	VendorMistral
 	VendorAmazon
+	// Vendors reachable only through Bedrock here — no direct provider exists
+	// for any of them, which is the point: opencode can serve them on the AWS
+	// credential an org already has.
+	VendorQwen
+	VendorDeepSeek
+	VendorZAI
+	VendorMiniMax
+	VendorXAI
 
 	MaxVendor // always add vendors before MaxVendor
 )
@@ -158,6 +206,11 @@ var vendorToString = map[Vendor]string{
 	VendorMeta:      "Meta",
 	VendorMistral:   "Mistral",
 	VendorAmazon:    "Amazon",
+	VendorQwen:      "Qwen",
+	VendorDeepSeek:  "DeepSeek",
+	VendorZAI:       "Z.ai",
+	VendorMiniMax:   "MiniMax",
+	VendorXAI:       "xAI",
 }
 
 func (v Vendor) String() string {
@@ -177,6 +230,16 @@ var modelToVendor = map[Model]Vendor{
 	NovaProV1:      VendorAmazon,
 	ClaudeSonnet45: VendorAnthropic,
 	ClaudeOpus45:   VendorAnthropic,
+	ClaudeSonnet5:  VendorAnthropic,
+	ClaudeOpus5:    VendorAnthropic,
+	ClaudeFable5:   VendorAnthropic,
+	Qwen3Coder480B: VendorQwen,
+	Qwen3CoderNext: VendorQwen,
+	DeepSeekV32:    VendorDeepSeek,
+	Glm47:          VendorZAI,
+	Glm5:           VendorZAI,
+	MinimaxM25:     VendorMiniMax,
+	Grok43:         VendorXAI,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.
@@ -239,16 +302,29 @@ func (v Vendor) OpencodeKeepsBedrockGeography() bool {
 // modelProviderID overrides the id used at a specific provider, for models
 // whose provider-side name differs from our logical one.
 //
-// DELIBERATELY EMPTY. No divergence is currently KNOWN — but that is
-// unverified rather than established, which is the reason this seam exists at
-// all. Our ids are ours: opencode resolves models through its own registry
-// (models.dev), and that registry need not agree with either our names or the
-// vendor API's. Populate an entry the moment a real run shows a mismatch;
-// guessing now would bake in a second unverified assumption.
+// The Bedrock entries here are NOT the same kind of thing as the Anthropic
+// models above them. Those are late-bound on purpose: their concrete ids carry
+// regions, dates and revisions that vary per account, so discovery resolves
+// them and pinning one here would break between AWS revisions. These seven have
+// nothing to discover — no cross-region inference profile exists for any of
+// them, so ListInferenceProfiles returns nothing to match and the id has to be
+// stated.
 //
-// Not for providers that resolve ids at runtime — see
-// Provider.ResolvesModelIDAtRuntime.
-var modelProviderID = map[Model]map[Provider]string{}
+// Taken verbatim from models.dev's amazon-bedrock registry, which is what
+// OPENCODE resolves against — so these must track that registry, not Bedrock's
+// own naming, if the two ever disagree.
+//
+// Nothing else populates this map. A provider whose ids are discovered should
+// not appear here — see Provider.ResolvesModelIDAtRuntime.
+var modelProviderID = map[Model]map[Provider]string{
+	Qwen3Coder480B: {AWSBedrock: "qwen.qwen3-coder-480b-a35b-v1:0"},
+	Qwen3CoderNext: {AWSBedrock: "qwen.qwen3-coder-next"},
+	DeepSeekV32:    {AWSBedrock: "deepseek.v3.2"},
+	Glm47:          {AWSBedrock: "zai.glm-4.7"},
+	Glm5:           {AWSBedrock: "zai.glm-5"},
+	MinimaxM25:     {AWSBedrock: "minimax.minimax-m2.5"},
+	Grok43:         {AWSBedrock: "xai.grok-4.3"},
+}
 
 // IDFor returns the model id to use at a given provider: an override when the
 // provider names the model differently, otherwise our logical id.
@@ -286,6 +362,19 @@ var modelToDisplayName = map[Model]string{
 	NovaProV1:      "Nova Pro",
 	ClaudeSonnet45: "Sonnet 4.5",
 	ClaudeOpus45:   "Opus 4.5",
+	ClaudeSonnet5:  "Sonnet 5",
+	ClaudeOpus5:    "Opus 5",
+	ClaudeFable5:   "Fable 5",
+	// The vendor is rendered separately, so these carry none — a picker shows
+	// "Qwen · Qwen3 Coder 480B" and the second word would otherwise repeat.
+	// The parameter counts stay because they distinguish real variants.
+	Qwen3Coder480B: "Qwen3 Coder 480B",
+	Qwen3CoderNext: "Qwen3 Coder Next",
+	DeepSeekV32:    "V3.2",
+	Glm47:          "GLM-4.7",
+	Glm5:           "GLM-5",
+	MinimaxM25:     "M2.5",
+	Grok43:         "Grok 4.3",
 }
 
 // DisplayName returns the human-facing name, falling back to the wire id so an
@@ -310,6 +399,10 @@ func (m Model) DisplayName() string {
 var legacyModels = map[Model]bool{
 	ClaudeSonnet45: true,
 	ClaudeOpus45:   true,
+	// GLM-5 supersedes it. Kept for the same reason as the 4.5-generation
+	// Claude models: Bedrock model access is granted per account, and an org
+	// with 4.7 enabled and not 5 should still have something to run.
+	Glm47: true,
 }
 
 // IsLegacy reports whether a newer generation of this model exists.
@@ -365,6 +458,29 @@ var modelToTier = map[Model]Tier{
 	Gpt53Codex: TierBalanced,
 	Gpt54:      TierBalanced,
 	NovaProV1:  TierBalanced,
+
+	ClaudeSonnet5: TierBalanced,
+	ClaudeOpus5:   TierFrontier,
+	// Frontier by price and capability, but a SPECIALIST — creative writing and
+	// analysis rather than coding. It never wins a tier resolution because Opus
+	// 4.8 and Opus 5 both precede it in agentTypeToModels, so reaching it takes
+	// an explicit pick. Same treatment as 5.3-codex: listed honestly, not
+	// promoted.
+	ClaudeFable5: TierFrontier,
+
+	// The Bedrock-only lineup sits at balanced, deliberately. These are strong
+	// coding models at roughly a tenth of frontier cost, but ranking them
+	// against Claude would be a claim this catalogue cannot support — none has
+	// been run here yet. Balanced states "a reasonable default choice", which is
+	// defensible; frontier would state "the most capable available", which is
+	// not. Revisit per model once real tasks have run on them.
+	Qwen3Coder480B: TierBalanced,
+	Qwen3CoderNext: TierBalanced,
+	DeepSeekV32:    TierBalanced,
+	Glm47:          TierBalanced,
+	Glm5:           TierBalanced,
+	MinimaxM25:     TierBalanced,
+	Grok43:         TierBalanced,
 }
 
 // Tier returns the model's capability band.

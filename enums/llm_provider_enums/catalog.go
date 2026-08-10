@@ -38,10 +38,23 @@ import (
 // point of keeping Model logical — see PLAN_provider_centric_llm_keys.md §3.3
 // and §4.1, where the prefix's second job (disambiguating the harness) is what
 // made stripping it dangerous until AgentType became explicit.
+// ⚠️ ORDER IS LOAD-BEARING and new entries go at the END. ModelForTier walks
+// this list and takes the first non-legacy match, so inserting a model
+// mid-list silently changes what "high complexity" resolves to for every
+// existing Task. Appending cannot: Opus 4.8 stays the frontier answer for
+// claude-code and opencode even with Opus 5 now in the catalogue, and moving
+// that on should be a deliberate edit to modelToTier, not a side effect of
+// adding a model.
 var agentTypeToModels = map[AgentType][]Model{
-	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48},
-	Codex:      {Gpt55, Gpt53Codex, Gpt54},
-	Opencode:   {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1},
+	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48,
+		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5},
+	Codex: {Gpt55, Gpt53Codex, Gpt54},
+	Opencode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1,
+		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5,
+		// The Bedrock-only lineup. opencode is the only agent that can reach
+		// these: claude-code and codex each speak one vendor's API, while
+		// opencode routes by provider id — which is the reason it exists here.
+		Qwen3Coder480B, Qwen3CoderNext, DeepSeekV32, Glm47, Glm5, MinimaxM25, Grok43},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -66,6 +79,20 @@ var modelToProviders = map[Model][]Provider{
 	// subscription still serve them, and Bedrock is where they matter most.
 	ClaudeSonnet45: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	ClaudeOpus45:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeSonnet5:  {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeOpus5:    {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeFable5:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	// Bedrock-ONLY, like Nova and for the same reason: we have no direct
+	// provider for any of these vendors, so AWS is the whole route. An org
+	// without Bedrock configured will not see them at all — ModelsFor filters
+	// on what the org can actually serve.
+	Qwen3Coder480B: {AWSBedrock},
+	Qwen3CoderNext: {AWSBedrock},
+	DeepSeekV32:    {AWSBedrock},
+	Glm47:          {AWSBedrock},
+	Glm5:           {AWSBedrock},
+	MinimaxM25:     {AWSBedrock},
+	Grok43:         {AWSBedrock},
 }
 
 // agentProviderCapabilities lists which provider APIs each CLI can talk to.
