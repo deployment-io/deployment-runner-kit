@@ -403,21 +403,45 @@ var legacyModels = map[Model]bool{
 	// Claude models: Bedrock model access is granted per account, and an org
 	// with 4.7 enabled and not 5 should still have something to run.
 	Glm47: true,
-	// Nova Pro caps OUTPUT at 8k, which is the limit that kept Devstral 2 and
-	// Mistral Large 3 out of this catalogue entirely — a coding agent writing
-	// file edits cannot work in it. Qwen3 Coder 480B is newer, has 65k of
-	// output and costs a quarter as much, so nothing recommends Nova Pro on
-	// merit any more.
-	//
-	// Kept rather than deleted because its wire id is in Task documents
-	// already: removing it would make GetModel fail for those, and a re-run
-	// would pass the logical id through to opencode and fail there. Legacy is
-	// the honest position — offerable, labelled, and last in every picker.
-	NovaProV1: true,
 }
 
 // IsLegacy reports whether a newer generation of this model exists.
 func (m Model) IsLegacy() bool { return legacyModels[m] }
+
+// disabledModels are RETIRED: still known, no longer offered.
+//
+// The axis legacy could not express. Legacy means "offer it, but last" — for a
+// superseded model an org may still need, because Bedrock access is granted per
+// account. Disabled means "stop offering it entirely" while keeping the entry
+// alive, and the difference matters because deleting a Model is not actually
+// available to us: the wire id is in Task documents, so GetModel must keep
+// resolving it or history stops rendering and an in-flight Job stops spawning.
+//
+// So this is the soft delete for a persisted enum. A disabled model:
+//
+//	IS still resolvable      — GetModel, String, DisplayName, Vendor all work
+//	IS NOT offered           — absent from Models(), so pickers and kit's
+//	                           creation policy never see it
+//	IS NOT recommended       — ModelForTier skips it
+//
+// Prefer disabling to deleting, always. Deleting an entry here cannot be
+// undone from the data side: the Tasks holding that id become unreadable.
+var disabledModels = map[Model]bool{
+	// Nova Pro caps OUTPUT at 8k — the limit that kept Devstral 2 and Mistral
+	// Large 3 out of this catalogue entirely, since a coding agent writing file
+	// edits cannot work in it. Qwen3 Coder 480B is newer, has 65k of output and
+	// costs a quarter as much, so nothing recommends Nova Pro on merit. It was
+	// added as the Bedrock smoke test back when it was the only Bedrock model
+	// opencode could reach; there are now fourteen.
+	NovaProV1: true,
+}
+
+// IsDisabled reports whether this model has been retired from the catalogue.
+//
+// Callers that OFFER models must honour it. Callers that RESOLVE or RENDER an
+// already-chosen model must not — that is the entire point of disabling rather
+// than deleting.
+func (m Model) IsDisabled() bool { return disabledModels[m] }
 
 // Tier is how capable a model is, independent of when it shipped.
 //
@@ -505,7 +529,10 @@ func (m Model) Tier() Tier { return modelToTier[m] }
 // catalogue gap, not something the caller should have to handle.
 func ModelForTier(h AgentType, t Tier) Model {
 	var current, legacy Model
-	for _, m := range agentTypeToModels[h] {
+	// h.Models(), not agentTypeToModels — a recommendation must never land on a
+	// retired model. It would be the one path that reintroduces a disabled
+	// model to a user who never chose it.
+	for _, m := range h.Models() {
 		if m.Tier() != t {
 			continue
 		}

@@ -131,8 +131,30 @@ var agentProviderCapabilities = map[AgentType][]Provider{
 	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
 }
 
-// Models returns the models this harness can run.
-func (h AgentType) Models() []Model { return agentTypeToModels[h] }
+// Models returns the models this harness OFFERS — retired ones excluded.
+//
+// Filtered here rather than at each call site because this is what every
+// offering path already reads, kit's SupportedModels and IsModelSupported
+// included. A disabled model therefore stops being creatable without kit
+// needing to learn the concept.
+//
+// Use AllModels when the question is capability or history rather than what to
+// offer.
+func (h AgentType) Models() []Model {
+	out := make([]Model, 0, len(agentTypeToModels[h]))
+	for _, m := range agentTypeToModels[h] {
+		if !m.IsDisabled() {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
+// AllModels returns every model this harness can run, INCLUDING retired ones.
+//
+// For callers asking what a harness is capable of, or rendering a model a Task
+// already holds. Offering paths want Models.
+func (h AgentType) AllModels() []Model { return agentTypeToModels[h] }
 
 // Providers returns the provider APIs this harness can talk to. Order carries
 // NO preference — see PreferredProvider.
@@ -143,6 +165,11 @@ func (h AgentType) Providers() []Provider { return agentProviderCapabilities[h] 
 func (m Model) Providers() []Provider { return modelToProviders[m] }
 
 // Supports reports whether the harness can run the model at all.
+//
+// Deliberately reads the FULL list, retired models included: a Task already
+// holding a disabled model is still runnable, and this answers capability
+// rather than what to offer. ProvidersFor depends on it, which is what keeps a
+// disabled model resolving at spawn instead of failing as "not possible".
 func (h AgentType) Supports(m Model) bool {
 	for _, candidate := range agentTypeToModels[h] {
 		if candidate == m {
@@ -377,7 +404,7 @@ func (h AgentType) DefaultModel() Model { return agentTypeToDefaultModel[h] }
 // learn what an organization is.
 func ModelsFor(h AgentType, isConfigured func(Provider) bool) []Model {
 	var out []Model
-	for _, m := range agentTypeToModels[h] {
+	for _, m := range h.Models() {
 		for _, p := range ProvidersFor(h, m) {
 			if isConfigured(p) {
 				out = append(out, m)

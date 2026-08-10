@@ -918,6 +918,74 @@ func TestAgentType_DefaultModelIsOneItRuns(t *testing.T) {
 	}
 }
 
+// ---------------------------------------------------------------------------
+// Retirement. Disabling is the soft delete for a persisted enum: the wire id is
+// in Task documents, so the entry must keep resolving even once nothing offers
+// it. These cases pin BOTH halves — a disabled model that stopped resolving
+// would be a delete with extra steps, and one that kept being offered would be
+// no retirement at all.
+// ---------------------------------------------------------------------------
+
+func TestDisabled_StillResolvesForTasksThatAlreadyHoldIt(t *testing.T) {
+	if !NovaProV1.IsDisabled() {
+		t.Fatal("this test needs a disabled model to be meaningful")
+	}
+	// The reason we disable instead of deleting: a stored Task holds this
+	// string, and every one of these is on the path from that string to a
+	// running agent, or to a rendered row in the UI.
+	m, err := GetModel("nova-pro-v1")
+	if err != nil || m != NovaProV1 {
+		t.Fatalf("GetModel(\"nova-pro-v1\") = %v, %v — a retired model must still parse, or history and in-flight Jobs break", m, err)
+	}
+	if m.DisplayName() == "" || m.DisplayName() == m.String() {
+		t.Errorf("DisplayName() = %q; a retired model must still render as itself", m.DisplayName())
+	}
+	if m.Vendor() != VendorAmazon {
+		t.Errorf("Vendor() = %v, want VendorAmazon", m.Vendor())
+	}
+	// Capability is not offering: the harness can still RUN it, which is what
+	// keeps ProvidersFor non-empty and lets an existing Job spawn.
+	if !Opencode.Supports(m) {
+		t.Error("Opencode.Supports(nova-pro-v1) = false; a retired model must stay runnable for Tasks that already chose it")
+	}
+	if len(ProvidersFor(Opencode, m)) == 0 {
+		t.Error("ProvidersFor returned nothing for a retired model; it would fail at spawn as 'not possible'")
+	}
+	if m.IDFor(AWSBedrock) == "" {
+		t.Error("IDFor returned empty for a retired model")
+	}
+}
+
+func TestDisabled_IsOfferedNowhere(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		for _, m := range h.Models() {
+			if m.IsDisabled() {
+				t.Errorf("%s.Models() offers retired model %s", h, m)
+			}
+		}
+		// Every tier, since a recommendation is the one path that could hand a
+		// user a retired model they never picked.
+		for _, tr := range []Tier{TierFast, TierBalanced, TierFrontier} {
+			if got := ModelForTier(h, tr); got.IsDisabled() {
+				t.Errorf("ModelForTier(%s, %s) recommends retired model %s", h, tr, got)
+			}
+		}
+		// AllModels is the deliberate exception — it answers capability.
+		if len(h.AllModels()) < len(h.Models()) {
+			t.Errorf("%s.AllModels() is smaller than Models(); it must be the superset", h)
+		}
+	}
+}
+
+// A default that is retired would preselect a model no picker lists.
+func TestDisabled_NoAgentDefaultsToARetiredModel(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		if h.DefaultModel().IsDisabled() {
+			t.Errorf("%s defaults to retired model %s", h, h.DefaultModel())
+		}
+	}
+}
+
 func TestModelsFor_OffersOnlyWhatTheOrgCanServe(t *testing.T) {
 	bedrockOnly := func(p Provider) bool { return p == AWSBedrock }
 	got := ModelsFor(Opencode, bedrockOnly)
@@ -925,9 +993,15 @@ func TestModelsFor_OffersOnlyWhatTheOrgCanServe(t *testing.T) {
 	for _, m := range got {
 		names[m] = true
 	}
-	// Nova is Bedrock-only, so a Bedrock org must see it.
-	if !names[NovaProV1] {
-		t.Errorf("opencode/Bedrock omits nova-pro-v1; got %v", got)
+	// Qwen3 Coder is Bedrock-only, so a Bedrock org must see it. This was
+	// Nova's job until Nova was retired — which is what the next case checks.
+	if !names[Qwen3Coder480B] {
+		t.Errorf("opencode/Bedrock omits qwen3-coder-480b; got %v", got)
+	}
+	// ...and a RETIRED Bedrock-only model must not appear, however well the org
+	// is credentialed. Being serveable is not being offered.
+	if names[NovaProV1] {
+		t.Errorf("opencode/Bedrock still offers retired nova-pro-v1; got %v", got)
 	}
 	// Claude models are served by Bedrock too.
 	if !names[ClaudeSonnet46] {
