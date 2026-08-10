@@ -193,21 +193,29 @@ func (m Model) Vendor() Vendor {
 // only carries one where that profile is the invocable id, and it is starkly
 // split — counted from the registry:
 //
-//	anthropic  11 base + 45 geography-prefixed
-//	meta        5 base +  2 geography-prefixed
-//	amazon      4 base +  0
+//	anthropic  11 base + 45 geography-prefixed   overwhelmingly prefixed
+//	amazon      4 base +  0                      never prefixed
+//	meta        5 base +  2                      MIXED — see below
 //	openai, mistral, qwen, nvidia, google, zai, minimax, writer, xai — base only
 //
 // Amazon is NOT the special case it first appears to be: ten of the fifteen
 // vendors are base-only, so KEEPING the prefix is the exception and this map
 // is the exception list.
 //
+// Meta is deliberately ABSENT despite having two prefixed entries. A
+// vendor-wide "keep" would be wrong for the other five, so Meta's split is
+// per-MODEL and this map cannot express it. Nothing forces the question yet —
+// no Meta model is in the catalogue — and inventing an answer here would bake
+// in a guess that no test could exercise. When a Meta model is added,
+// TestBedrockModelsHaveAConsideredGeographyRule fails and the decision gets
+// made against the registry as it stands then, which may need a per-model
+// override rather than an entry here.
+//
 // An absent vendor means "strip", which is the right default for a new vendor
 // and, when wrong, fails loudly — opencode answers ProviderModelNotFoundError
 // rather than quietly running something else.
 var opencodeBedrockGeographyVendors = map[Vendor]bool{
 	VendorAnthropic: true,
-	VendorMeta:      true,
 }
 
 // OpencodeKeepsBedrockGeography reports whether OPENCODE expects this vendor's
