@@ -342,37 +342,94 @@ func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
 	cases := []struct {
 		model    string
 		provider Provider
+		vendor   Vendor
 		want     string
 	}{
-		{"claude-sonnet-4-6", AnthropicDirect, "anthropic/claude-sonnet-4-6"},
-		{"gpt-5.5", OpenAIDirect, "openai/gpt-5.5"},
-		{"nova-pro-v1", AWSBedrock, "amazon-bedrock/nova-pro-v1"},
+		{"claude-sonnet-4-6", AnthropicDirect, VendorAnthropic, "anthropic/claude-sonnet-4-6"},
+		{"gpt-5.5", OpenAIDirect, VendorOpenAI, "openai/gpt-5.5"},
+		{"nova-pro-v1", AWSBedrock, VendorAmazon, "amazon-bedrock/nova-pro-v1"},
 
 		// Amazon's own models have NO geography-prefixed entries in opencode's
 		// registry, so the prefix discovery found must come off. This is the
 		// case a live Nova run failed on.
-		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
-		{"us.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
+		{"eu.amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon, "amazon-bedrock/amazon.nova-pro-v1:0"},
+		{"us.amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon, "amazon-bedrock/amazon.nova-pro-v1:0"},
 
 		// Anthropic's ARE in the registry prefixed, and the prefixed id IS the
 		// cross-region inference profile — which newer Claude models on Bedrock
 		// generally require. Stripping here would quietly request on-demand
 		// throughput they may not offer, so it must pass through untouched.
-		{"eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock,
+		{"eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock, VendorAnthropic,
 			"amazon-bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0"},
-		{"us.anthropic.claude-opus-4-5-20251101-v1:0", AWSBedrock,
+		{"us.anthropic.claude-opus-4-5-20251101-v1:0", AWSBedrock, VendorAnthropic,
 			"amazon-bedrock/us.anthropic.claude-opus-4-5-20251101-v1:0"},
 
 		// An id that already carries no geography is left alone either way.
-		{"amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
+		{"amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon, "amazon-bedrock/amazon.nova-pro-v1:0"},
 
-		// Only Bedrock is touched — a vendor id starting with a
-		// geography-looking token elsewhere must survive.
-		{"eu.something", AnthropicDirect, "anthropic/eu.something"},
+		// A model outside the catalogue has no vendor, and an unknown vendor
+		// must not be rewritten on a guess.
+		{"eu.acme.something-v1:0", AWSBedrock, VendorUnknown,
+			"amazon-bedrock/eu.acme.something-v1:0"},
+
+		// Only Bedrock is touched — an id starting with a geography-looking
+		// token at another provider must survive.
+		{"eu.something", AnthropicDirect, VendorAnthropic, "anthropic/eu.something"},
+		{"eu.something", OpenAIDirect, VendorAmazon, "openai/eu.something"},
 	}
 	for _, c := range cases {
-		if got := OpencodeModelID(c.model, c.provider); got != c.want {
-			t.Errorf("OpencodeModelID(%q, %s) = %q, want %q", c.model, c.provider, got, c.want)
+		if got := OpencodeModelID(c.model, c.provider, c.vendor); got != c.want {
+			t.Errorf("OpencodeModelID(%q, %s, %v) = %q, want %q", c.model, c.provider, c.vendor, got, c.want)
+		}
+	}
+}
+
+// Every geography AWS uses must be recognised, for a vendor that strips. A
+// prefix missing from the list is a silent pass-through: the id keeps its
+// geography, opencode has no entry for it, and the run fails at spawn.
+func TestOpencodeModelID_StripsEveryGeography(t *testing.T) {
+	for _, geo := range []string{"eu.", "us.", "au.", "jp.", "apac.", "global."} {
+		got := OpencodeModelID(geo+"amazon.nova-pro-v1:0", AWSBedrock, VendorAmazon)
+		if want := "amazon-bedrock/amazon.nova-pro-v1:0"; got != want {
+			t.Errorf("geography %q: got %q, want %q", geo, got, want)
+		}
+	}
+}
+
+// The strip decision belongs to the vendor, so it must follow the VENDOR
+// argument rather than the id's own vendor segment. These two disagree on
+// purpose: a caller that passed the wrong vendor should produce the wrong
+// answer here, which is what makes the argument load-bearing rather than
+// decorative.
+func TestOpencodeModelID_FollowsVendorArgNotTheIDText(t *testing.T) {
+	if got := OpencodeModelID("eu.amazon.nova-pro-v1:0", AWSBedrock, VendorAnthropic); got !=
+		"amazon-bedrock/eu.amazon.nova-pro-v1:0" {
+		t.Errorf("VendorAnthropic should keep the prefix, got %q", got)
+	}
+	if got := OpencodeModelID("eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock, VendorAmazon); got !=
+		"amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0" {
+		t.Errorf("VendorAmazon should strip the prefix, got %q", got)
+	}
+}
+
+// Every model the catalogue offers on Bedrock must have a vendor whose strip
+// rule was actually considered. Adding a Bedrock-hosted model from a new vendor
+// fails HERE, at CI, rather than at spawn on a customer's runner — which is the
+// whole reason the rule hangs off the Vendor enum.
+func TestBedrockModelsHaveAConsideredGeographyRule(t *testing.T) {
+	considered := map[Vendor]bool{
+		VendorAnthropic: true, // keeps  — 45 prefixed entries in models.dev
+		VendorAmazon:    true, // strips —  0 prefixed entries
+	}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		if m.BedrockProfilePrefix() == "" {
+			continue // not served by Bedrock
+		}
+		if !considered[m.Vendor()] {
+			t.Errorf("model %s is on Bedrock but vendor %v has no considered "+
+				"geography rule — check models.dev for whether opencode lists "+
+				"its ids prefixed, then add it here and to bedrockGeographyVendors",
+				m, m.Vendor())
 		}
 	}
 }
@@ -383,14 +440,14 @@ func TestOpencodeModelID_EmptyForProvidersOpencodeCannotUse(t *testing.T) {
 	// unsupported. agentTypeToProviders already excludes it; returning "" here is
 	// the second line of defence, so a caller that skips that check still
 	// cannot build a usable id.
-	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription); got != "" {
+	if got := OpencodeModelID("claude-opus-4-8", AnthropicSubscription, VendorAnthropic); got != "" {
 		t.Errorf("OpencodeModelID with AnthropicSubscription = %q, want \"\"", got)
 	}
-	if got := OpencodeModelID("claude-opus-4-8", GoogleVertex); got != "" {
+	if got := OpencodeModelID("claude-opus-4-8", GoogleVertex, VendorAnthropic); got != "" {
 		t.Errorf("OpencodeModelID with GoogleVertex = %q, want \"\" (not wired)", got)
 	}
 	// A malformed "/model" is worse than nothing — it looks valid.
-	if got := OpencodeModelID("", AWSBedrock); got != "" {
+	if got := OpencodeModelID("", AWSBedrock, VendorAmazon); got != "" {
 		t.Errorf("OpencodeModelID with empty model = %q, want \"\"", got)
 	}
 }

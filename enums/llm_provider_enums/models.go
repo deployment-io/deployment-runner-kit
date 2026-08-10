@@ -185,6 +185,40 @@ func (m Model) Vendor() Vendor {
 	return modelToVendor[m]
 }
 
+// bedrockGeographyVendors names the vendors whose Bedrock models opencode
+// lists UNDER their cross-region geography prefix.
+//
+// This mirrors OPENCODE's registry (models.dev), not Bedrock's. Bedrock
+// publishes a geography-prefixed profile for nearly everything, but models.dev
+// only carries one where that profile is the invocable id, and it is starkly
+// split — counted from the registry:
+//
+//	anthropic  11 base + 45 geography-prefixed
+//	meta        5 base +  2 geography-prefixed
+//	amazon      4 base +  0
+//	openai, mistral, qwen, nvidia, google, zai, minimax, writer, xai — base only
+//
+// Amazon is NOT the special case it first appears to be: ten of the fifteen
+// vendors are base-only, so KEEPING the prefix is the exception and this map
+// is the exception list.
+//
+// An absent vendor means "strip", which is the right default for a new vendor
+// and, when wrong, fails loudly — opencode answers ProviderModelNotFoundError
+// rather than quietly running something else.
+var bedrockGeographyVendors = map[Vendor]bool{
+	VendorAnthropic: true,
+	VendorMeta:      true,
+}
+
+// UsesBedrockGeographyPrefix reports whether opencode expects this vendor's
+// Bedrock ids to keep their cross-region prefix.
+//
+// VendorUnknown answers true, so a model outside the catalogue passes through
+// untouched rather than being rewritten on a guess.
+func (v Vendor) UsesBedrockGeographyPrefix() bool {
+	return v == VendorUnknown || bedrockGeographyVendors[v]
+}
+
 // modelProviderID overrides the id used at a specific provider, for models
 // whose provider-side name differs from our logical one.
 //
