@@ -977,6 +977,53 @@ func TestDisabled_IsOfferedNowhere(t *testing.T) {
 	}
 }
 
+// What a session gets when it names no model. Pinned because it is the least
+// visible thing in this package and the most consequential: it is what the
+// Assistant's session→Task conversion uses, so a change here silently moves
+// every Task created without an explicit model.
+//
+// It also had NO test until Opus 5 replaced Opus 4.8 as the default — that
+// change altered what every high-complexity session runs on and the suite
+// stayed green.
+func TestTierResolution_IsPinned(t *testing.T) {
+	cases := []struct {
+		agent AgentType
+		tier  Tier
+		want  Model
+	}{
+		{ClaudeCode, TierFast, ClaudeHaiku45},
+		{ClaudeCode, TierBalanced, ClaudeSonnet46},
+		{ClaudeCode, TierFrontier, ClaudeOpus5},
+		// opencode's default is Sonnet 4.6, so its frontier answer comes from
+		// the first non-legacy frontier model instead — a different code path
+		// reaching the same model, which is why both are pinned.
+		{Opencode, TierFast, ClaudeHaiku45},
+		{Opencode, TierBalanced, ClaudeSonnet46},
+		{Opencode, TierFrontier, ClaudeOpus5},
+	}
+	for _, c := range cases {
+		if got := ModelForTier(c.agent, c.tier); got != c.want {
+			t.Errorf("ModelForTier(%s, %s) = %s, want %s — this moves what every session without an explicit model runs on", c.agent, c.tier, got, c.want)
+		}
+	}
+}
+
+// An agent whose default is legacy is a half-finished migration.
+//
+// Promoting a new default and retiring the old one are a PACKAGE. Doing only
+// the second leaves a picker preselecting a model it also labels superseded and
+// sorts to the bottom of its own list — and ModelForTier hides it, because the
+// default wins its tier before the legacy check runs. Nothing else would catch
+// this.
+func TestDefaultModelIsNeverLegacy(t *testing.T) {
+	for _, h := range AllAgentTypes() {
+		if h.DefaultModel().IsLegacy() {
+			t.Errorf("%s defaults to %s, which is marked legacy — promote a current model or drop the legacy flag; a preselected model must not read as superseded",
+				h, h.DefaultModel())
+		}
+	}
+}
+
 // A default that is retired would preselect a model no picker lists.
 func TestDisabled_NoAgentDefaultsToARetiredModel(t *testing.T) {
 	for _, h := range AllAgentTypes() {
