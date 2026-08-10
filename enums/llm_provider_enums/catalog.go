@@ -1,6 +1,9 @@
 package llm_provider_enums
 
-import "sort"
+import (
+	"sort"
+	"strings"
+)
 
 // The catalogue: which (harness, model, provider) combinations are real.
 //
@@ -202,7 +205,38 @@ func OpencodeModelID(modelID string, p Provider) string {
 	if name == "" || modelID == "" {
 		return ""
 	}
+	// opencode wants Bedrock's BASE model id, not the region-prefixed inference
+	// profile — it applies the geography itself. claude-code is the opposite: it
+	// takes the profile id verbatim. Same provider, same model, two renderings,
+	// which is why this belongs on the agent axis rather than the provider one.
+	//
+	// A live Nova run proved it: discovery resolved eu.amazon.nova-pro-v1:0 and
+	// opencode rejected it with ProviderModelNotFoundError, suggesting
+	// "amazon.nova-pro-v1:0".
+	//
+	// The prefix is stripped rather than the discovery skipped, because
+	// discovery is what finds the exact dated revision — anthropic's ids carry
+	// one (…claude-sonnet-4-5-20250929-v1:0) and hardcoding those would need a
+	// release per Bedrock model launch. Strip the geography, keep the version.
+	if p == AWSBedrock {
+		modelID = strings.TrimPrefix(modelID, bedrockGeographyPrefix(modelID))
+	}
 	return name + "/" + modelID
+}
+
+// bedrockGeographyPrefix returns the cross-region prefix on an inference
+// profile id, or "" when there is none.
+//
+// Matches the prefixes deployment-runner's discovery produces. Kept here
+// because the stripping is a catalogue-level rendering rule, and a caller that
+// re-derived it would be one more copy of Bedrock's naming scheme.
+func bedrockGeographyPrefix(modelID string) string {
+	for _, prefix := range []string{"eu.", "us.", "apac."} {
+		if strings.HasPrefix(modelID, prefix) {
+			return prefix
+		}
+	}
+	return ""
 }
 
 // ConfigurableProviders returns every provider an org can actually configure,

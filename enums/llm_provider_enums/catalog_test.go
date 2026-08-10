@@ -347,9 +347,24 @@ func TestOpencodeModelID_RendersProviderPrefix(t *testing.T) {
 		{"claude-sonnet-4-6", AnthropicDirect, "anthropic/claude-sonnet-4-6"},
 		{"gpt-5.5", OpenAIDirect, "openai/gpt-5.5"},
 		{"nova-pro-v1", AWSBedrock, "amazon-bedrock/nova-pro-v1"},
-		// The runner substitutes the discovered profile id before rendering, so
-		// the prefix must survive a model string the catalogue never held.
-		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/eu.amazon.nova-pro-v1:0"},
+		// The runner substitutes the discovered profile id before rendering, and
+		// opencode wants Bedrock's BASE id — it applies the geography itself.
+		// This case previously asserted the prefix survived, which is what a
+		// live Nova run disproved: opencode rejected
+		// "amazon-bedrock/eu.amazon.nova-pro-v1:0" with
+		// ProviderModelNotFoundError, suggesting "amazon.nova-pro-v1:0".
+		{"eu.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
+		// The VERSION must survive the strip — only the geography goes. Losing
+		// the dated revision would put us back to guessing which one Bedrock
+		// has, which is the whole reason discovery exists.
+		{"eu.anthropic.claude-sonnet-4-5-20250929-v1:0", AWSBedrock,
+			"amazon-bedrock/anthropic.claude-sonnet-4-5-20250929-v1:0"},
+		{"us.anthropic.claude-opus-4-5-20251101-v1:0", AWSBedrock,
+			"amazon-bedrock/anthropic.claude-opus-4-5-20251101-v1:0"},
+		{"apac.amazon.nova-pro-v1:0", AWSBedrock, "amazon-bedrock/amazon.nova-pro-v1:0"},
+		// Only Bedrock strips — a vendor id that happens to start with a
+		// geography-looking token elsewhere must be left alone.
+		{"eu.something", AnthropicDirect, "anthropic/eu.something"},
 	}
 	for _, c := range cases {
 		if got := OpencodeModelID(c.model, c.provider); got != c.want {
