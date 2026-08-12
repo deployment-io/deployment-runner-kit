@@ -64,6 +64,29 @@ const (
 	AnthropicSubscription Provider = 4
 	// OpenAIDirect is catalogue-only; see the note above.
 	OpenAIDirect Provider = 5
+	// Novita is an inference PLATFORM: it runs the open-weight models on its
+	// own GPUs, so the relationship is direct and there is no per-model
+	// enablement step. That last part is the point — the Bedrock lineup below
+	// is gated per account per region by AWS, which left seven shipped models
+	// uninvocable on the only Bedrock account we have.
+	//
+	// Chosen on measured data rather than reputation: of the providers serving
+	// our curated open models, it is the only one covering all five, at 99.4%
+	// uptime and the lowest price, quantized to fp8. The platforms every
+	// comparison article recommends cover 1-3 of the five. See
+	// PLAN_NOVITA_OPENROUTER_PROVIDERS.md.
+	Novita Provider = 6
+	// OpenRouter is a GATEWAY: it serves nothing itself and routes to whichever
+	// platform hosts a model. Complementary to Novita rather than redundant —
+	// no single platform is best per model (Qwen3 Coder Next is 65k/fp8 on
+	// Novita against 262k/bf16 elsewhere), and routing per model is exactly
+	// what a gateway buys.
+	//
+	// The key is the CUSTOMER'S, like every other provider here. That is what
+	// makes a gateway unremarkable rather than a privacy question: they chose
+	// it and accepted its terms. It would only become one if we routed through
+	// an account of ours.
+	OpenRouter Provider = 7
 )
 
 // providerToString values are USER-VISIBLE. They are surfaced as
@@ -77,6 +100,8 @@ var providerToString = map[Provider]string{
 	GoogleVertex:          "Google Vertex",
 	AnthropicSubscription: "Claude Subscription",
 	OpenAIDirect:          "OpenAI Direct",
+	Novita:                "Novita",
+	OpenRouter:            "OpenRouter",
 }
 
 func (p Provider) String() string {
@@ -125,7 +150,7 @@ func (p Provider) IsValid() bool {
 // so persisting both would create a pair that can disagree.
 func (p Provider) AuthMode() AuthMode {
 	switch p {
-	case AnthropicDirect, OpenAIDirect:
+	case AnthropicDirect, OpenAIDirect, Novita, OpenRouter:
 		return AuthAPIKey
 	case AWSBedrock, GoogleVertex:
 		return AuthCloudRole
@@ -219,6 +244,12 @@ var providerKey = map[Provider]string{
 	GoogleVertex:          "google-vertex",
 	AnthropicSubscription: "anthropic-subscription",
 	OpenAIDirect:          "openai-direct",
+	// No "-direct" suffix: that suffix distinguishes a vendor's own API from
+	// the other routes to the SAME vendor's models (Bedrock, a subscription).
+	// Neither of these has a sibling route to disambiguate from, so the bare
+	// name is the honest key.
+	Novita:     "novita",
+	OpenRouter: "openrouter",
 }
 
 var keyToProvider = func() map[string]Provider {

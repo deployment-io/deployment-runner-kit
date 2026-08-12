@@ -316,14 +316,55 @@ func (v Vendor) OpencodeKeepsBedrockGeography() bool {
 //
 // Nothing else populates this map. A provider whose ids are discovered should
 // not appear here — see Provider.ResolvesModelIDAtRuntime.
+// ⚠️ EVERY PROVIDER NAMES THE SAME MODEL DIFFERENTLY, down to the vendor
+// segment — which is why this is keyed on the PAIR and not on the model:
+//
+//	Qwen3 Coder 480B  Bedrock  qwen.qwen3-coder-480b-a35b-v1:0
+//	                  Novita   qwen/qwen3-coder-480b-a35b-instruct
+//	GLM-5             Novita   zai-org/glm-5
+//	                  OpenRouter   z-ai/glm-5
+//
+// A model absent for a provider is absent from that provider's entry in
+// modelToProviders too, and the two must agree. Verified against
+// models.opencode.ai, the registry opencode resolves against, and pinned by
+// TestCatalog_DeclaredIDsMatchTheRegistryShape.
 var modelProviderID = map[Model]map[Provider]string{
-	Qwen3Coder480B: {AWSBedrock: "qwen.qwen3-coder-480b-a35b-v1:0"},
-	Qwen3CoderNext: {AWSBedrock: "qwen.qwen3-coder-next"},
-	DeepSeekV32:    {AWSBedrock: "deepseek.v3.2"},
-	Glm47:          {AWSBedrock: "zai.glm-4.7"},
-	Glm5:           {AWSBedrock: "zai.glm-5"},
-	MinimaxM25:     {AWSBedrock: "minimax.minimax-m2.5"},
-	Grok43:         {AWSBedrock: "xai.grok-4.3"},
+	Qwen3Coder480B: {
+		AWSBedrock: "qwen.qwen3-coder-480b-a35b-v1:0",
+		Novita:     "qwen/qwen3-coder-480b-a35b-instruct",
+		// OpenRouter does not carry the 480B — it serves Coder Next instead.
+	},
+	Qwen3CoderNext: {
+		AWSBedrock: "qwen.qwen3-coder-next",
+		Novita:     "qwen/qwen3-coder-next",
+		OpenRouter: "qwen/qwen3-coder-next",
+	},
+	DeepSeekV32: {
+		AWSBedrock: "deepseek.v3.2",
+		Novita:     "deepseek/deepseek-v3.2",
+		OpenRouter: "deepseek/deepseek-v3.2",
+	},
+	Glm47: {
+		AWSBedrock: "zai.glm-4.7",
+		Novita:     "zai-org/glm-4.7",
+		OpenRouter: "z-ai/glm-4.7",
+	},
+	Glm5: {
+		AWSBedrock: "zai.glm-5",
+		Novita:     "zai-org/glm-5",
+		OpenRouter: "z-ai/glm-5",
+	},
+	MinimaxM25: {
+		AWSBedrock: "minimax.minimax-m2.5",
+		Novita:     "minimax/minimax-m2.5",
+		OpenRouter: "minimax/minimax-m2.5",
+	},
+	Grok43: {
+		AWSBedrock: "xai.grok-4.3",
+		// Novita runs open weights on its own GPUs and cannot host a
+		// proprietary model; only a gateway can route to xAI.
+		OpenRouter: "x-ai/grok-4.3",
+	},
 }
 
 // IDFor returns the model id to use at a given provider: an override when the
