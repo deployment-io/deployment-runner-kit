@@ -82,17 +82,30 @@ var modelToProviders = map[Model][]Provider{
 	ClaudeSonnet5:  {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	ClaudeOpus5:    {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	ClaudeFable5:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
-	// Bedrock-ONLY, like Nova and for the same reason: we have no direct
-	// provider for any of these vendors, so AWS is the whole route. An org
-	// without Bedrock configured will not see them at all — ModelsFor filters
-	// on what the org can actually serve.
-	Qwen3Coder480B: {AWSBedrock},
-	Qwen3CoderNext: {AWSBedrock},
-	DeepSeekV32:    {AWSBedrock},
-	Glm47:          {AWSBedrock},
-	Glm5:           {AWSBedrock},
-	MinimaxM25:     {AWSBedrock},
-	Grok43:         {AWSBedrock},
+	// The open-weight lineup. No vendor here has a direct provider of its own,
+	// so these reach us through a cloud, a platform or a gateway.
+	//
+	// Bedrock was the only route until Novita and OpenRouter, and that was a
+	// problem: AWS grants model access PER ACCOUNT PER REGION, so all seven
+	// shipped uninvocable on an account that had not enabled them. Both new
+	// providers need one API key and no per-model step.
+	//
+	// ⚠️ THE THREE ROUTES DO NOT SERVE THE SAME SET, so these lists are not
+	// copy-paste. Verified against models.opencode.ai — the registry opencode
+	// actually resolves against:
+	//
+	//	Novita has no Grok         — a GPU platform cannot host a proprietary
+	//	                             model; only a gateway can route to xAI
+	//	OpenRouter has no 480B     — it carries Qwen3 Coder Next instead
+	//
+	// Which is why both are worth having rather than either alone.
+	Qwen3Coder480B: {AWSBedrock, Novita},
+	Qwen3CoderNext: {AWSBedrock, Novita, OpenRouter},
+	DeepSeekV32:    {AWSBedrock, Novita, OpenRouter},
+	Glm47:          {AWSBedrock, Novita, OpenRouter},
+	Glm5:           {AWSBedrock, Novita, OpenRouter},
+	MinimaxM25:     {AWSBedrock, Novita, OpenRouter},
+	Grok43:         {AWSBedrock, OpenRouter},
 }
 
 // agentProviderCapabilities lists which provider APIs each CLI can talk to.
@@ -128,7 +141,12 @@ var modelToProviders = map[Model][]Provider{
 var agentProviderCapabilities = map[AgentType][]Provider{
 	ClaudeCode: {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	Codex:      {OpenAIDirect},
-	Opencode:   {AnthropicDirect, AWSBedrock, OpenAIDirect},
+	// Novita and OpenRouter are opencode-only until proven otherwise:
+	// claude-code speaks Anthropic's API and codex authenticates against
+	// api.openai.com. OpenRouter may well expose a compatible surface, but that
+	// is UNVERIFIED — and this table exists because Bedrock hosts OpenAI's
+	// gpt-oss models and codex still cannot reach one.
+	Opencode: {AnthropicDirect, AWSBedrock, OpenAIDirect, Novita, OpenRouter},
 }
 
 // Models returns the models this harness OFFERS — retired ones excluded.
@@ -235,6 +253,11 @@ var opencodeProviderName = map[Provider]string{
 	AnthropicDirect: "anthropic",
 	OpenAIDirect:    "openai",
 	AWSBedrock:      "amazon-bedrock",
+	// The registry ids, not our display names. "novita-ai" reads oddly and is
+	// correct — it is the key in models.opencode.ai, and opencode resolves the
+	// "provider/model" string against exactly that.
+	Novita:     "novita-ai",
+	OpenRouter: "openrouter",
 }
 
 // OpencodeName returns the provider id opencode expects, or "" when opencode

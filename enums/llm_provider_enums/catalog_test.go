@@ -562,13 +562,25 @@ func TestIDFor_DefaultsToTheLogicalID(t *testing.T) {
 	// unchanged — this pins the FALLBACK, which is what almost every lookup
 	// hits.
 	//
-	// Deliberately asserts on EVERY provider except that one pair, rather than
-	// listing the models expected to be clean: an override added to a second
-	// provider by accident fails here rather than at spawn.
+	// Deliberately asserts on EVERY pair that has no DECLARED id, rather than
+	// listing the models expected to be clean: an override added by accident
+	// fails here rather than at spawn.
+	//
+	// The exemption is the declared-id set — every open-weight model at Bedrock,
+	// Novita and OpenRouter, each of which names it differently. Those are
+	// covered by the tests above.
+	declared := func(m Model, p Provider) bool {
+		byProvider, ok := modelProviderID[m]
+		if !ok {
+			return false
+		}
+		_, ok = byProvider[p]
+		return ok
+	}
 	for m := ClaudeHaiku45; m < MaxModel; m++ {
 		for _, p := range m.Providers() {
-			if p == AWSBedrock && m.BedrockProfilePrefix() == "" {
-				continue // declared id, covered by the two tests above
+			if declared(m, p) {
+				continue
 			}
 			if got := m.IDFor(p); got != m.String() {
 				t.Errorf("IDFor(%s, %s) = %q, want the logical id %q", m, p, got, m)
@@ -659,6 +671,8 @@ func TestProviderKeys_AreStable(t *testing.T) {
 		GoogleVertex:          "google-vertex",
 		AnthropicSubscription: "anthropic-subscription",
 		OpenAIDirect:          "openai-direct",
+		Novita:                "novita",
+		OpenRouter:            "openrouter",
 	}
 	if len(want) != len(providerKey) {
 		t.Errorf("%d providers have keys, %d pinned — a new slug must be pinned deliberately", len(providerKey), len(want))
@@ -1298,5 +1312,70 @@ func TestAgentType_WireStringsAreStable(t *testing.T) {
 	// existed have no value stored, and agentbox applies the same default.
 	if got, err := ResolveAgentType(""); err != nil || got != ClaudeCode {
 		t.Errorf(`ResolveAgentType("") = %v (%v), want claude-code — legacy Tasks store nothing`, got, err)
+	}
+}
+
+// Declared ids are TRANSCRIBED BY HAND from models.opencode.ai, so their shape
+// is pinned here. Not the strings themselves — that would just restate the map
+// — but the properties a typo breaks, which review does not catch.
+//
+// The Bedrock ids were verified this way after a live run failed on an id that
+// looked right; these three routes name the same model three different ways,
+// down to the vendor segment (zai-org/glm-5 on Novita, z-ai/glm-5 on
+// OpenRouter), so the chance of a transcription error is real.
+func TestCatalog_DeclaredIDsMatchTheRegistryShape(t *testing.T) {
+	// Bedrock uses dots, the opencode-native providers use a slash.
+	separator := map[Provider]string{
+		AWSBedrock: ".",
+		Novita:     "/",
+		OpenRouter: "/",
+	}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		for p, id := range modelProviderID[m] {
+			sep, known := separator[p]
+			if !known {
+				t.Errorf("%s declares an id at %s, whose id shape is unpinned — add it here deliberately", m, p)
+				continue
+			}
+			if !strings.Contains(id, sep) {
+				t.Errorf("%s at %s = %q: expected a %q separating vendor from model", m, p, id, sep)
+			}
+			if strings.TrimSpace(id) != id || id == "" {
+				t.Errorf("%s at %s = %q: whitespace or empty", m, p, id)
+			}
+			// A declared id must never be the logical one — that is the failure
+			// it exists to prevent, and it reads as correct at a glance.
+			if id == m.String() {
+				t.Errorf("%s at %s declares the LOGICAL id %q; the override is a no-op", m, p, id)
+			}
+		}
+	}
+}
+
+// Every declared (model, provider) pair must appear in modelToProviders, and
+// vice versa for the open-weight models. The two tables are edited separately
+// and a route present in one but not the other is either a model the picker
+// offers but cannot serve, or a dead id nobody reads.
+func TestCatalog_DeclaredIDsAndProviderListsAgree(t *testing.T) {
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		serving := map[Provider]bool{}
+		for _, p := range m.Providers() {
+			serving[p] = true
+		}
+		for p := range modelProviderID[m] {
+			if !serving[p] {
+				t.Errorf("%s declares an id at %s but modelToProviders does not list it — a dead id", m, p)
+			}
+		}
+		// The reverse, for the routes that REQUIRE a declared id: an
+		// opencode-native provider has no discovery to fall back on.
+		for _, p := range m.Providers() {
+			if p != Novita && p != OpenRouter {
+				continue
+			}
+			if _, ok := modelProviderID[m][p]; !ok {
+				t.Errorf("%s lists %s but declares no id there; the logical id would reach the provider verbatim", m, p)
+			}
+		}
 	}
 }
