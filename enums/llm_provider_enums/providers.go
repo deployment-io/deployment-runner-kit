@@ -95,11 +95,11 @@ const (
 // Subscription -> AnthropicSubscription. Renaming an identifier should not
 // silently alter what a customer reads.
 var providerToString = map[Provider]string{
-	AnthropicDirect:       "Anthropic Direct",
+	AnthropicDirect:       "Anthropic",
 	AWSBedrock:            "AWS Bedrock",
 	GoogleVertex:          "Google Vertex",
 	AnthropicSubscription: "Claude Subscription",
-	OpenAIDirect:          "OpenAI Direct",
+	OpenAIDirect:          "OpenAI",
 	Novita:                "Novita",
 	OpenRouter:            "OpenRouter",
 }

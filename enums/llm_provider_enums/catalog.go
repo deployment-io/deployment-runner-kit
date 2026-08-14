@@ -323,7 +323,7 @@ func stripBedrockGeography(modelID string) string {
 }
 
 // ConfigurableProviders returns every provider an org can actually configure,
-// in enum order.
+// in DISPLAY order.
 //
 // DERIVED, not a second list: a provider is configurable exactly when some
 // agent can use it. That makes the catalogue the only place a provider is
@@ -331,6 +331,12 @@ func stripBedrockGeography(modelID string) string {
 // by the settings UI or accepted by the API without someone first adding it to
 // a real agent — rather than each caller carrying its own reject list that
 // drifts.
+//
+// Ordering used to be AllProviders(), i.e. by the PERSISTED ENUM NUMBER — so
+// the settings page was laid out by the order providers happened to be added,
+// and could not be changed without renumbering values that live in customer
+// documents. displayRank replaces that with a stated rule, the same move
+// already made for provider preference, capability tier and agent priority.
 func ConfigurableProviders() []Provider {
 	offered := map[Provider]bool{}
 	for agentType := range agentTypeToModels {
@@ -345,7 +351,37 @@ func ConfigurableProviders() []Provider {
 			out = append(out, p)
 		}
 	}
+	sort.SliceStable(out, func(i, j int) bool {
+		return displayRank(out[i]) < displayRank(out[j])
+	})
 	return out
+}
+
+// displayRank orders the settings cards. Lower sorts first.
+//
+// THE RULE IS "how much does this card ask of the user", not familiarity or
+// alphabet — so it generalises to providers not yet built instead of needing a
+// new opinion each time:
+//
+//  1. paste an API key          Anthropic, OpenAI, Novita, OpenRouter
+//  2. an optional fallback key  Claude Subscription
+//  3. nothing to paste at all   AWS Bedrock — the runner assumes a role, so
+//     there is no key and no console to visit
+//
+// Ties keep AllProviders() order via a stable sort, which is why the API-key
+// group stays in the order those providers were added rather than shuffling.
+// Vertex lands in group 3 with Bedrock when it ships, without a decision.
+func displayRank(p Provider) int {
+	switch p.AuthMode() {
+	case AuthAPIKey:
+		return 1
+	case AuthSubscription:
+		return 2
+	default:
+		// AuthCloudRole and anything unrecognised. Last is the safe place for
+		// a provider whose card shape we do not know.
+		return 3
+	}
 }
 
 // IsConfigurable reports whether an org can configure this provider.
