@@ -27,15 +27,37 @@ func TestProvider_PersistedNumberingIsFrozen(t *testing.T) {
 	}
 }
 
-func TestProvider_DisplayStringsUnchangedByTheRename(t *testing.T) {
-	// String() feeds ProviderName on GET /organizations/current/claude-auth and
-	// is rendered in the dashboard. The Go identifier moved from Subscription to
-	// AnthropicSubscription; what a customer reads must not have moved with it.
-	if got := AnthropicSubscription.String(); got != "Claude Subscription" {
-		t.Errorf("AnthropicSubscription.String() = %q, want %q — user-visible text must survive the identifier rename", got, "Claude Subscription")
+func TestProvider_DisplayStringsArePinned(t *testing.T) {
+	// String() is rendered as the settings card title. Pinned so it can only
+	// move DELIBERATELY — the original purpose was guarding it against an
+	// identifier rename (Subscription -> AnthropicSubscription), and that still
+	// holds: the Go names remain AnthropicDirect and OpenAIDirect while the
+	// labels no longer say "Direct".
+	//
+	// ⚠️ THE SLUGS ARE NOT THESE. anthropic-direct and openai-direct are
+	// persisted as LLMConfig keys and in API paths; renaming one orphans an
+	// org's credentials. Only the label changed here.
+	cases := map[Provider]string{
+		AnthropicDirect:       "Anthropic",
+		OpenAIDirect:          "OpenAI",
+		AnthropicSubscription: "Claude Subscription",
+		AWSBedrock:            "AWS Bedrock",
+		Novita:                "Novita",
+		OpenRouter:            "OpenRouter",
 	}
-	if got := AnthropicDirect.String(); got != "Anthropic Direct" {
-		t.Errorf("AnthropicDirect.String() = %q, want %q", got, "Anthropic Direct")
+	for p, want := range cases {
+		if got := p.String(); got != want {
+			t.Errorf("%s label = %q, want %q — this is what a customer reads", p.Key(), got, want)
+		}
+	}
+	// "Direct" distinguished a vendor's own API from other routes to the SAME
+	// vendor's models. The cards carry that distinction themselves now
+	// ("Anthropic" vs "Claude Subscription" vs "AWS Bedrock"), so the suffix
+	// was noise. Pinned against reintroduction.
+	for p := range cases {
+		if strings.Contains(p.String(), "Direct") {
+			t.Errorf("%s label reads %q; the Direct suffix was deliberately dropped", p.Key(), p.String())
+		}
 	}
 }
 
@@ -797,11 +819,55 @@ func TestConfigurableProviders_ExcludesReservedOnes(t *testing.T) {
 			}
 		}
 	}
-	// Enum order, so callers need not sort.
+	// DISPLAY order, so callers need not sort. Deliberately no longer enum
+	// order — that laid the settings page out by the order providers happened
+	// to be added, and could not be changed without renumbering values stored
+	// in customer documents.
 	got := ConfigurableProviders()
 	for i := 1; i < len(got); i++ {
-		if got[i-1] >= got[i] {
-			t.Errorf("ConfigurableProviders is not in enum order: %v", got)
+		if displayRank(got[i-1]) > displayRank(got[i]) {
+			t.Errorf("ConfigurableProviders is not in display order: %v", got)
+		}
+	}
+	// The card that asks for nothing goes last: Bedrock stores no key, so it
+	// has no field and no console link, and leading with it would front the
+	// page with the least actionable option.
+	if len(got) > 0 && got[len(got)-1] != AWSBedrock {
+		t.Errorf("last card is %v, want AWS Bedrock — it is the one with nothing to paste", got[len(got)-1])
+	}
+	// Every configurable provider must rank, or a new one lands in an
+	// arbitrary place. displayRank derives from AuthMode, so this fails only
+	// if a provider has no auth mode at all.
+	for _, p := range got {
+		if p.AuthMode() == AuthUnknown {
+			t.Errorf("%v has no auth mode, so its card position is undefined", p)
+		}
+	}
+}
+
+// Ties inside a rank keep AllProviders() order, via a stable sort. Without
+// that the API-key group would shuffle between builds — map iteration is
+// random, and a settings page whose cards move on refresh reads as a bug.
+func TestConfigurableProviders_IsStableWithinARank(t *testing.T) {
+	first := ConfigurableProviders()
+	for i := 0; i < 20; i++ {
+		got := ConfigurableProviders()
+		for j := range got {
+			if got[j] != first[j] {
+				t.Fatalf("card order is not deterministic: %v then %v", first, got)
+			}
+		}
+	}
+	// And the API-key group keeps enum order within itself.
+	var apiKey []Provider
+	for _, p := range first {
+		if p.AuthMode() == AuthAPIKey {
+			apiKey = append(apiKey, p)
+		}
+	}
+	for i := 1; i < len(apiKey); i++ {
+		if apiKey[i-1] >= apiKey[i] {
+			t.Errorf("API-key cards are not in enum order within their rank: %v", apiKey)
 		}
 	}
 }
