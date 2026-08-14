@@ -944,7 +944,7 @@ func TestPreferredProvider_PrefersWhatTheOrgAlreadyPaysFor(t *testing.T) {
 	}
 	worstOrder := []Provider{AnthropicDirect, AWSBedrock, AnthropicSubscription}
 
-	got, ok := PreferredProvider(worstOrder, configured(AnthropicDirect, AnthropicSubscription))
+	got, ok := PreferredProvider(worstOrder, configured(AnthropicDirect, AnthropicSubscription), ProviderPreference{})
 	if !ok || got != AnthropicSubscription {
 		t.Errorf("PreferredProvider = %v (%v); a subscribed org must not be billed metered alongside its subscription", got, ok)
 	}
@@ -952,16 +952,16 @@ func TestPreferredProvider_PrefersWhatTheOrgAlreadyPaysFor(t *testing.T) {
 	// With no subscription configured, the first configured candidate wins —
 	// arbitrary but deterministic, since nothing defensibly ranks an API key
 	// against a cloud role.
-	got, ok = PreferredProvider(worstOrder, configured(AWSBedrock, AnthropicDirect))
+	got, ok = PreferredProvider(worstOrder, configured(AWSBedrock, AnthropicDirect), ProviderPreference{})
 	if !ok || got != AnthropicDirect {
 		t.Errorf("PreferredProvider = %v (%v), want the first configured candidate", got, ok)
 	}
 
 	// A candidate the org has NOT configured is never chosen.
-	if got, ok := PreferredProvider(worstOrder, configured(AWSBedrock)); !ok || got != AWSBedrock {
+	if got, ok := PreferredProvider(worstOrder, configured(AWSBedrock), ProviderPreference{}); !ok || got != AWSBedrock {
 		t.Errorf("PreferredProvider = %v (%v), want the only configured candidate", got, ok)
 	}
-	if _, ok := PreferredProvider(worstOrder, configured()); ok {
+	if _, ok := PreferredProvider(worstOrder, configured(), ProviderPreference{}); ok {
 		t.Error("nothing configured must report no provider, not a guess")
 	}
 }
@@ -1292,7 +1292,7 @@ func TestNothingDependsOnDeclarationOrder(t *testing.T) {
 	worst := []Provider{AnthropicDirect, AWSBedrock, AnthropicSubscription}
 	got, ok := PreferredProvider(worst, func(p Provider) bool {
 		return p == AnthropicDirect || p == AnthropicSubscription
-	})
+	}, ProviderPreference{})
 	if !ok || got != AnthropicSubscription {
 		t.Errorf("PreferredProvider = %v, want the subscription regardless of order", got)
 	}
@@ -1442,6 +1442,110 @@ func TestCatalog_DeclaredIDsAndProviderListsAgree(t *testing.T) {
 			if _, ok := modelProviderID[m][p]; !ok {
 				t.Errorf("%s lists %s but declares no id there; the logical id would reach the provider verbatim", m, p)
 			}
+		}
+	}
+}
+
+// An org's stated order replaces the guess. This is what the old
+// PreferredProvider comment promised — "when per-model routing lands, an org's
+// own configured order replaces this and the guessing stops."
+func TestPreferredProvider_OrgOrderWins(t *testing.T) {
+	candidates := []Provider{AWSBedrock, Novita, OpenRouter}
+	all := func(Provider) bool { return true }
+
+	// Without an order, catalogue position decides — which is how Bedrock beat
+	// a freshly configured Novita and routed Tasks to an account that could not
+	// invoke the model.
+	if got, _ := PreferredProvider(candidates, all, ProviderPreference{}); got != AWSBedrock {
+		t.Errorf("no preference: got %s, want the catalogue-order fallback AWS Bedrock", got)
+	}
+	// With one, it does not.
+	pref := ProviderPreference{Order: []Provider{Novita, OpenRouter, AWSBedrock}}
+	if got, _ := PreferredProvider(candidates, all, pref); got != Novita {
+		t.Errorf("with an order: got %s, want Novita", got)
+	}
+}
+
+// ⚠️ Order is a PREFERENCE, not an allowlist. A provider absent from it must
+// still be eligible — Nova is served only by Bedrock and Grok only by
+// OpenRouter, so an order that excluded the unnamed would make those models
+// unrunnable through a setting that never mentions them.
+func TestPreferredProvider_OrderIsNotAnAllowlist(t *testing.T) {
+	pref := ProviderPreference{Order: []Provider{Novita}}
+	// Nova's only route is Bedrock, which the order does not name.
+	got, ok := PreferredProvider([]Provider{AWSBedrock}, func(Provider) bool { return true }, pref)
+	if !ok || got != AWSBedrock {
+		t.Errorf("got %s ok=%v; an unnamed provider must still be usable when it is the only route", got, ok)
+	}
+}
+
+// An explicit order outranks the subscription rule. That rule guards against
+// silently billing an org twice, which is worth defending against a coin toss
+// — but not against someone who has said what they want.
+func TestPreferredProvider_StatedOrderBeatsTheSubscriptionDefault(t *testing.T) {
+	candidates := []Provider{AnthropicDirect, AnthropicSubscription}
+	all := func(Provider) bool { return true }
+
+	// Default: the prepaid subscription wins, so we do not charge twice.
+	if got, _ := PreferredProvider(candidates, all, ProviderPreference{}); got != AnthropicSubscription {
+		t.Errorf("default: got %s, want the prepaid subscription", got)
+	}
+	// Stated otherwise: honour it.
+	pref := ProviderPreference{Order: []Provider{AnthropicDirect, AnthropicSubscription}}
+	if got, _ := PreferredProvider(candidates, all, pref); got != AnthropicDirect {
+		t.Errorf("stated order: got %s, want Anthropic — overriding a stated choice is the guessing this replaces", got)
+	}
+}
+
+// The per-model escape hatch, and the three ways it must decline to apply.
+func TestPreferredProvider_Override(t *testing.T) {
+	candidates := []Provider{AWSBedrock, Novita, OpenRouter}
+	all := func(Provider) bool { return true }
+	order := []Provider{Novita, OpenRouter, AWSBedrock}
+
+	// The real case: Qwen3 Coder Next serves 262k of output through OpenRouter
+	// and 65k through Novita, so the org-wide order is right everywhere else
+	// and wrong here.
+	pref := ProviderPreference{Order: order, Override: OpenRouter}
+	if got, _ := PreferredProvider(candidates, all, pref); got != OpenRouter {
+		t.Errorf("override ignored: got %s, want OpenRouter", got)
+	}
+
+	// A STALE override must fall through rather than break routing. Each of
+	// these is reachable without the user touching the setting again.
+	stale := []struct {
+		name         string
+		pref         ProviderPreference
+		isConfigured func(Provider) bool
+		want         Provider
+	}{
+		{
+			"credential removed",
+			ProviderPreference{Order: order, Override: OpenRouter},
+			func(p Provider) bool { return p != OpenRouter },
+			Novita,
+		},
+		{
+			"provider no longer serves the model",
+			ProviderPreference{Order: order, Override: OpenRouter},
+			all,
+			OpenRouter,
+		},
+		{
+			"override never set",
+			ProviderPreference{Order: order},
+			all,
+			Novita,
+		},
+	}
+	for _, c := range stale {
+		cands := candidates
+		if c.name == "provider no longer serves the model" {
+			cands = []Provider{AWSBedrock, Novita} // OpenRouter dropped
+			c.want = Novita
+		}
+		if got, _ := PreferredProvider(cands, c.isConfigured, c.pref); got != c.want {
+			t.Errorf("%s: got %s, want %s", c.name, got, c.want)
 		}
 	}
 }

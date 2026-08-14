@@ -409,19 +409,63 @@ func (p Provider) IsConfigurable() bool {
 // else ties and falls back to catalogue order, which is arbitrary but
 // deterministic; no defensible reason ranks an API key against a cloud role.
 //
-// INTERIM. When per-model routing lands, an org's own configured order replaces
-// this and the guessing stops.
-func PreferredProvider(candidates []Provider, isConfigured func(Provider) bool) (Provider, bool) {
+// That rule is now the DEFAULT, not the answer: an org that has stated its own
+// order gets that instead, and the guessing stops. See ProviderPreference.
+func PreferredProvider(candidates []Provider, isConfigured func(Provider) bool, pref ProviderPreference) (Provider, bool) {
+	// An override is the most specific thing anyone said, so it wins — but only
+	// if it is still usable. A model that loses a provider, or an org that
+	// removes a credential, leaves a stale override behind, and honouring one
+	// blindly would break routing on a setting the user has forgotten setting.
+	if pref.Override.IsValid() && isConfigured(pref.Override) && servesModel(candidates, pref.Override) {
+		return pref.Override, true
+	}
 	best, found := Provider(0), false
 	for _, p := range candidates {
 		if !isConfigured(p) {
 			continue
 		}
-		if !found || preferenceRank(p) < preferenceRank(best) {
+		if !found || pref.rank(p) < pref.rank(best) {
 			best, found = p, true
 		}
 	}
 	return best, found
+}
+
+// ProviderPreference is an org's own routing choice, and the zero value means
+// "we have not been told" — which is why every field is optional and the
+// default rule below still applies.
+type ProviderPreference struct {
+	// Order ranks providers highest-first. NOT an allowlist: a provider absent
+	// from it is still eligible, just last. That distinction matters because a
+	// model may have exactly one route (Nova on Bedrock, Grok on OpenRouter),
+	// and an order that silently excluded it would make the model unrunnable
+	// through a setting that never mentioned it.
+	Order []Provider
+	// Override pins ONE model to ONE provider, for the case an org-wide order
+	// cannot express: Qwen3 Coder Next serves 262k of output through one
+	// provider and 65k through another, so the general preference is right for
+	// every other model and wrong for that one.
+	Override Provider
+}
+
+// rank scores a provider for this preference. Lower wins.
+func (pref ProviderPreference) rank(p Provider) int {
+	if len(pref.Order) == 0 {
+		// Nobody has said anything, so fall back to the paid-for-already rule.
+		return preferenceRank(p)
+	}
+	// ⚠️ AN EXPLICIT ORDER OUTRANKS THE SUBSCRIPTION RULE. That rule exists to
+	// stop us silently billing an org twice, which is worth defending against a
+	// coin toss — but not against someone who has said what they want. Guessing
+	// is the thing being replaced here; overriding a stated choice to protect
+	// the org from itself would keep the guessing and add condescension.
+	for i, ordered := range pref.Order {
+		if ordered == p {
+			return i
+		}
+	}
+	// Ranked after everything named, in catalogue order among themselves.
+	return len(pref.Order) + int(p)
 }
 
 // preferenceRank orders providers by whether the org is already paying for them
@@ -512,4 +556,16 @@ func AllAgentTypes() []AgentType {
 		return out[i] < out[j]
 	})
 	return out
+}
+
+// servesModel reports whether a provider is among a model's candidates. Named
+// for what the caller is asking rather than the mechanics, since "contains"
+// already means something else in this package's tests.
+func servesModel(candidates []Provider, want Provider) bool {
+	for _, p := range candidates {
+		if p == want {
+			return true
+		}
+	}
+	return false
 }
