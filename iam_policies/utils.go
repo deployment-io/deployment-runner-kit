@@ -2,7 +2,6 @@ package iam_policies
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -15,6 +14,9 @@ import (
 	"net/url"
 	"time"
 )
+
+// deploymentIoAddedSid marks the one statement in the runner's inline policy that we own.
+const deploymentIoAddedSid = "deploymentIoAdded"
 
 func getDeploymentRunnerTaskRoleName(osStr, cpuStr, organizationID, region string) string {
 	//dr-task-role-<osCpuStr>-<orgid>-<region>
@@ -67,7 +69,7 @@ func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cp
 		return err
 	}
 
-	//parse policy document data
+	//decode policy document
 	policyDocumentEncoded := aws.ToString(getRolePolicyOutput.PolicyDocument)
 	if len(policyDocumentEncoded) == 0 {
 		return fmt.Errorf("got empty policy document from AWS")
@@ -76,56 +78,19 @@ func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cp
 	if err != nil {
 		return fmt.Errorf("error decoding policy document: %s", err)
 	}
-	var policyDocumentData aws_policy_schema.PolicyDocumentData
-	err = json.Unmarshal([]byte(policyDocument), &policyDocumentData)
-	if err != nil {
-		return fmt.Errorf("error parsing policy data: %s", err)
-	}
-
 	newActions, err := policyType.GetPolicyDataActions()
 	if err != nil {
 		return fmt.Errorf("error finding new actions for policy type: %s", err)
 	}
 
-	statementIndex := -1
-	var oldActionsSet = make(map[string]bool)
-	for index, statement := range policyDocumentData.Statement {
-		if len(statement.Sid) > 0 && statement.Sid == "deploymentIoAdded" {
-			for _, action := range statement.Action {
-				//create a set for old actions
-				oldActionsSet[action] = true
-			}
-			statementIndex = index
-			break
-		}
+	//the whole document is written back, so anything we didn't author has to survive untouched
+	newPolicyDocument, changed, err := aws_policy_schema.AddActionsToSid([]byte(policyDocument), deploymentIoAddedSid, newActions)
+	if err != nil {
+		return fmt.Errorf("error parsing policy data: %s", err)
 	}
 
-	if statementIndex == -1 {
-		//add and append new statement
-		policyDocumentData.Statement = append(policyDocumentData.Statement, aws_policy_schema.Statement{
-			Sid:      "deploymentIoAdded",
-			Effect:   "Allow",
-			Action:   []string{},
-			Resource: []string{"*"},
-		})
-		statementIndex = len(policyDocumentData.Statement) - 1
-	}
-
-	var newActionsUpdateList []string
-	for _, newAction := range newActions {
-		_, exists := oldActionsSet[newAction]
-		if !exists {
-			newActionsUpdateList = append(newActionsUpdateList, newAction)
-		}
-	}
-
-	if len(newActionsUpdateList) > 0 {
-		policyDocumentData.Statement[statementIndex].Action = append(policyDocumentData.Statement[statementIndex].Action, newActionsUpdateList...)
+	if changed {
 		//add inline policy
-		newPolicyDocument, err := json.Marshal(policyDocumentData)
-		if err != nil {
-			return err
-		}
 		_, err = iamClient.PutRolePolicy(context.TODO(), &iam.PutRolePolicyInput{
 			PolicyDocument: aws.String(string(newPolicyDocument)),
 			PolicyName:     aws.String(runnerPolicyName),
