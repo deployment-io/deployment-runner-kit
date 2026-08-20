@@ -158,6 +158,85 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 	}
 }
 
+// Storage keys are persisted in organization documents, so they are pinned for
+// the same reason the wire ids above are: changing one orphans every pin
+// holding it.
+func TestModel_StorageKeysAreStable(t *testing.T) {
+	cases := map[Model]string{
+		ClaudeHaiku45:  "claude-haiku-4-5",
+		ClaudeSonnet46: "claude-sonnet-4-6",
+		ClaudeOpus48:   "claude-opus-4-8",
+		Gpt55:          "gpt-5-5",
+		Gpt53Codex:     "gpt-5-3-codex",
+		Gpt54:          "gpt-5-4",
+		NovaProV1:      "nova-pro-v1",
+		ClaudeSonnet45: "claude-sonnet-4-5",
+		ClaudeOpus45:   "claude-opus-4-5",
+		ClaudeSonnet5:  "claude-sonnet-5",
+		ClaudeOpus5:    "claude-opus-5",
+		ClaudeFable5:   "claude-fable-5",
+		Qwen3Coder480B: "qwen3-coder-480b",
+		Qwen3CoderNext: "qwen3-coder-next",
+		DeepSeekV32:    "deepseek-v3-2",
+		Glm47:          "glm-4-7",
+		Glm5:           "glm-5",
+		MinimaxM25:     "minimax-m2-5",
+		Grok43:         "grok-4-3",
+	}
+	// EXHAUSTIVE, for the same reason TestModel_WireStringsAreStable is.
+	if len(cases) != len(modelKey) {
+		t.Errorf("%d keys declared, %d pinned — add the new one's storage key here on purpose", len(modelKey), len(cases))
+	}
+	for m, want := range cases {
+		if got := m.Key(); got != want {
+			t.Errorf("model %d Key() = %q, want %q — this is a stored document key", uint(m), got, want)
+		}
+	}
+}
+
+// The whole point of Key: a period in a document key is a PATH SEPARATOR, so a
+// key carrying one nests itself into a document nobody asked for and leaves it
+// undecodable. This is the guard that made the 2026-08-20 outage impossible to
+// reintroduce by adding a model.
+func TestModel_StorageKeysCarryNoPeriod(t *testing.T) {
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		key := m.Key()
+		if key == "" {
+			t.Errorf("model %s has no storage key", m)
+			continue
+		}
+		if strings.ContainsAny(key, ".$") {
+			t.Errorf("model %s: storage key %q contains a period or dollar — it would nest or be read as an operator", m, key)
+		}
+	}
+}
+
+// Two models sharing a key would silently overwrite each other's pin.
+func TestModel_StorageKeysAreUnique(t *testing.T) {
+	seen := map[string]Model{}
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		if other, ok := seen[m.Key()]; ok {
+			t.Errorf("models %s and %s share storage key %q", other, m, m.Key())
+		}
+		seen[m.Key()] = m
+	}
+}
+
+// The no-migration guarantee: pins written before Key existed were stored under
+// the wire id, so for every model whose wire id is already dot-free the two must
+// stay identical or those pins silently stop resolving.
+func TestModel_StorageKeyMatchesWireIDWhenItCan(t *testing.T) {
+	for m := ClaudeHaiku45; m < MaxModel; m++ {
+		if strings.Contains(m.String(), ".") {
+			continue
+		}
+		if m.Key() != m.String() {
+			t.Errorf("model %s: Key() = %q but the wire id %q is already a valid key — diverging orphans pins written before Key existed",
+				m, m.Key(), m.String())
+		}
+	}
+}
+
 func TestHarness_ResolveDefaultsEmptyToClaudeCode(t *testing.T) {
 	// Tasks created before the agent type existed carry no AGENT_TYPE, and
 	// agentbox defaults an empty value to claude-code. Diverging here would

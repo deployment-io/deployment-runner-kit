@@ -124,6 +124,57 @@ func GetModel(s string) (Model, error) {
 	return 0, fmt.Errorf("unknown model id %q", s)
 }
 
+// modelKey is a model's identifier in a DOCUMENT-KEY position, as distinct
+// from the wire id String() returns.
+//
+// It exists because SEVEN wire ids contain a period — grok-4.3, gpt-5.4,
+// gpt-5.5, gpt-5.3-codex, deepseek-v3.2, glm-4.7, minimax-m2.5 — and a period
+// is a PATH SEPARATOR in a MongoDB update key. Storing an org's pin under
+// "llmConfig.modelProviderPreference.grok-4.3" wrote
+// {"grok-4": {"3": "openrouter"}}: a nested document under a key nobody named,
+// which then refused to decode into map[string]string and took the entire
+// organization document out of service. That happened in production on
+// 2026-08-20. Making the key dot-free HERE, once, is what stops every future
+// caller having to remember.
+//
+// DECLARED, not derived by replacing periods. These strings are persisted, so
+// they are chosen deliberately and pinned by test, exactly like the wire ids
+// and the enum values. A derived key would silently change the day someone
+// edits a wire id.
+//
+// Keys are IDENTICAL to the wire id wherever the wire id has no period, which
+// is what makes this a no-migration change: every pin already stored was
+// written under a dot-free wire id and still resolves.
+var modelKey = map[Model]string{
+	ClaudeHaiku45:  "claude-haiku-4-5",
+	ClaudeSonnet46: "claude-sonnet-4-6",
+	ClaudeOpus48:   "claude-opus-4-8",
+	Gpt55:          "gpt-5-5",
+	Gpt53Codex:     "gpt-5-3-codex",
+	Gpt54:          "gpt-5-4",
+	NovaProV1:      "nova-pro-v1",
+	ClaudeSonnet45: "claude-sonnet-4-5",
+	ClaudeOpus45:   "claude-opus-4-5",
+	ClaudeSonnet5:  "claude-sonnet-5",
+	ClaudeOpus5:    "claude-opus-5",
+	ClaudeFable5:   "claude-fable-5",
+	Qwen3Coder480B: "qwen3-coder-480b",
+	Qwen3CoderNext: "qwen3-coder-next",
+	DeepSeekV32:    "deepseek-v3-2",
+	Glm47:          "glm-4-7",
+	Glm5:           "glm-5",
+	MinimaxM25:     "minimax-m2-5",
+	Grok43:         "grok-4-3",
+}
+
+// Key returns the stable identifier to use where a model id becomes a KEY —
+// a document field name, a URL segment — rather than a value. Same contract as
+// Provider.Key, and never contains a period. Use String for the wire format
+// that Tasks store and the MCP tools accept.
+func (m Model) Key() string {
+	return modelKey[m]
+}
+
 // modelToBedrockProfilePrefix maps a logical model to the VERSION-PINNED
 // prefix shared by every concrete inference profile for that exact model.
 //
