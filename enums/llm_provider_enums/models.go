@@ -457,15 +457,21 @@ var modelToDisplayName = map[Model]string{
 	ClaudeSonnet5:  "Sonnet 5",
 	ClaudeOpus5:    "Opus 5",
 	ClaudeFable5:   "Fable 5",
-	// The vendor is rendered separately, so these carry none — a picker shows
-	// "Qwen · Qwen3 Coder 480B" and the second word would otherwise repeat.
-	// The parameter counts stay because they distinguish real variants.
+	// Each label names the model FAMILY, even where that repeats the vendor
+	// beside it. An earlier revision stripped the family from these two alone
+	// — "V3.2" and "M2.5" — on the theory that the vendor is rendered
+	// separately. In a table with its own Vendor column that read as cryptic
+	// next to "Qwen3 Coder 480B" and "GLM-5", which kept theirs, so the rule
+	// was being applied to two models out of seven.
+	//
+	// A label has to stand alone anyway: it appears in Task rows and job logs
+	// where no vendor is beside it.
 	Qwen3Coder480B: "Qwen3 Coder 480B",
 	Qwen3CoderNext: "Qwen3 Coder Next",
-	DeepSeekV32:    "V3.2",
+	DeepSeekV32:    "DeepSeek V3.2",
 	Glm47:          "GLM-4.7",
 	Glm5:           "GLM-5",
-	MinimaxM25:     "M2.5",
+	MinimaxM25:     "MiniMax M2.5",
 	Grok43:         "Grok 4.3",
 }
 
