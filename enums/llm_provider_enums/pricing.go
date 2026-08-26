@@ -54,6 +54,25 @@ var modelProviderRate = map[Model]map[Provider]Rate{
 	Gpt55:      {OpenAIDirect: {InputPerM: 5.00, CachedPerM: 0.50, OutputPerM: 30.00}},
 	Gpt54:      {OpenAIDirect: {InputPerM: 2.50, CachedPerM: 0.25, OutputPerM: 15.00}},
 	Gpt53Codex: {OpenAIDirect: {InputPerM: 1.75, CachedPerM: 0.175, OutputPerM: 14.00}},
+	// The 5.6 family, at OpenAI's STANDARD list price — not the launch promo,
+	// which is time-limited and would expire into a table nothing re-checks.
+	// Understating a rate for a while is a wrong number either way; the promo
+	// is the one that goes wrong silently and on a date nobody wrote down.
+	//
+	// ⚠️ THE LONG-CONTEXT SURCHARGE IS NOT PRICED. OpenAI bills 5.6 at a higher
+	// input rate above a request-size threshold, and Rate has no tiered field —
+	// three flat numbers per pair is the whole model. So a run whose prompts
+	// cross that threshold is priced LOW here, and knowingly: an agent re-reading
+	// a large repo does cross it. The alternative was a fourth field and a
+	// threshold nothing else in the catalogue needs, for a cost line that is
+	// already an estimate off token counts codex reports after the fact. Give
+	// Rate a tiered input before anything bills a customer from this number.
+	//
+	// Cached input is 10% of fresh input at each, which is OpenAI's published
+	// ratio for the family rather than an arithmetic convenience.
+	Gpt56Sol:   {OpenAIDirect: {InputPerM: 5.00, CachedPerM: 0.50, OutputPerM: 30.00}},
+	Gpt56Terra: {OpenAIDirect: {InputPerM: 2.00, CachedPerM: 0.20, OutputPerM: 12.00}},
+	Gpt56Luna:  {OpenAIDirect: {InputPerM: 0.20, CachedPerM: 0.02, OutputPerM: 1.20}},
 }
 
 // RateFor returns the published rate for this model at this provider.

@@ -139,6 +139,11 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		Glm5:           "glm-5",
 		MinimaxM25:     "minimax-m2.5",
 		Grok43:         "grok-4.3",
+		// OpenAI's API ids verbatim, periods and all — this is the string that
+		// reaches the codex CLI as --model.
+		Gpt56Sol:   "gpt-5.6-sol",
+		Gpt56Terra: "gpt-5.6-terra",
+		Gpt56Luna:  "gpt-5.6-luna",
 	}
 	// EXHAUSTIVE. Without this, adding a model leaves its wire id unpinned and
 	// this test still passes — which is exactly what happened when Sonnet 4.5
@@ -182,6 +187,10 @@ func TestModel_StorageKeysAreStable(t *testing.T) {
 		Glm5:           "glm-5",
 		MinimaxM25:     "minimax-m2-5",
 		Grok43:         "grok-4-3",
+		// Dot-free, unlike the wire ids above — the divergence is the point.
+		Gpt56Sol:   "gpt-5-6-sol",
+		Gpt56Terra: "gpt-5-6-terra",
+		Gpt56Luna:  "gpt-5-6-luna",
 	}
 	// EXHAUSTIVE, for the same reason TestModel_WireStringsAreStable is.
 	if len(cases) != len(modelKey) {
@@ -1159,6 +1168,16 @@ func TestTierResolution_IsPinned(t *testing.T) {
 		{Opencode, TierFast, ClaudeHaiku45},
 		{Opencode, TierBalanced, ClaudeSonnet46},
 		{Opencode, TierFrontier, ClaudeOpus5},
+		// codex, which had no tiered answer at all until the 5.6 family: its
+		// three older models all sit at balanced, so every tier fell through to
+		// the default. Now fast and frontier are real answers.
+		//
+		// Balanced stays on gpt-5.5 — Terra is the newer balanced model but is
+		// appended after it, and appending deliberately cannot move a resolution
+		// on its own. Moving it would be an edit to agentTypeToModels' order.
+		{Codex, TierFast, Gpt56Luna},
+		{Codex, TierBalanced, Gpt55},
+		{Codex, TierFrontier, Gpt56Sol},
 	}
 	for _, c := range cases {
 		if got := ModelForTier(c.agent, c.tier); got != c.want {
@@ -1360,10 +1379,18 @@ func TestNothingDependsOnDeclarationOrder(t *testing.T) {
 	if got := ModelForTier(ClaudeCode, TierFrontier); got.IsLegacy() {
 		t.Errorf("frontier tier = %v, a superseded model", got)
 	}
-	// An untiered lineup resolves to the agent's explicit default rather than
-	// to whichever model is listed first.
-	if got := ModelForTier(Codex, TierBalanced); got != Codex.DefaultModel() {
-		t.Errorf("codex balanced = %v, want its default %v", got, Codex.DefaultModel())
+	// The agent's own default wins its tier outright, wherever it happens to sit
+	// in the lineup — codex lists gpt-5.6-sol fourth of six and frontier still
+	// resolves to it, so the answer comes from the explicit choice rather than a
+	// list index. This case used to read "an untiered lineup falls back to the
+	// default", which only held while every codex model sat at balanced; the 5.6
+	// family tiers cleanly, so the same invariant is pinned at frontier now.
+	if got := ModelForTier(Codex, TierFrontier); got != Codex.DefaultModel() {
+		t.Errorf("codex frontier = %v, want its default %v", got, Codex.DefaultModel())
+	}
+	// And a superseded model never wins a band, however it is listed.
+	if got := ModelForTier(Codex, TierBalanced); got.IsLegacy() {
+		t.Errorf("codex balanced = %v, a superseded model", got)
 	}
 
 	// Provider preference is a rule; passing candidates in the WORST order

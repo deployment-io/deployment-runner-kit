@@ -48,13 +48,18 @@ import (
 var agentTypeToModels = map[AgentType][]Model{
 	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48,
 		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5},
-	Codex: {Gpt55, Gpt53Codex, Gpt54},
+	Codex: {Gpt55, Gpt53Codex, Gpt54, Gpt56Sol, Gpt56Terra, Gpt56Luna},
 	Opencode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1,
 		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5,
 		// The Bedrock-only lineup. opencode is the only agent that can reach
 		// these: claude-code and codex each speak one vendor's API, while
 		// opencode routes by provider id — which is the reason it exists here.
-		Qwen3Coder480B, Qwen3CoderNext, DeepSeekV32, Glm47, Glm5, MinimaxM25, Grok43},
+		Qwen3Coder480B, Qwen3CoderNext, DeepSeekV32, Glm47, Glm5, MinimaxM25, Grok43,
+		// The 5.6 family, on OpenAIDirect like Gpt55 above — opencode holds an
+		// OpenAI key of its own, so it reaches them without going near codex.
+		// Appended, so opencode's tier answers are unchanged: Opus 5 still wins
+		// frontier and Haiku 4.5 still wins fast, both listed earlier.
+		Gpt56Sol, Gpt56Terra, Gpt56Luna},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -70,6 +75,15 @@ var modelToProviders = map[Model][]Provider{
 	Gpt55:          {OpenAIDirect},
 	Gpt53Codex:     {OpenAIDirect},
 	Gpt54:          {OpenAIDirect},
+	// The 5.6 family. OpenAIDirect ALONE, deliberately: codex authenticates
+	// against api.openai.com, and no other route has been verified for these.
+	// Bedrock hosts only OpenAI's open-weight gpt-oss models, and whether the
+	// gateways carry 5.6 yet is a question for the day someone checks the
+	// registry — not an assumption to make here, where an unserved provider
+	// shows up as a picker entry whose Task fails at pickup.
+	Gpt56Sol:   {OpenAIDirect},
+	Gpt56Terra: {OpenAIDirect},
+	Gpt56Luna:  {OpenAIDirect},
 	// Bedrock-only: Amazon does not offer Nova through a direct API, so this
 	// is the first model whose single provider is a cloud route rather than
 	// its vendor. claude-code and codex cannot run it — agentTypeToModels keeps
@@ -490,8 +504,16 @@ var agentTypeToDefaultModel = map[AgentType]Model{
 	// in ModelForTier. Change it deliberately, never as a side effect of adding
 	// a model.
 	ClaudeCode: ClaudeOpus5,
-	// OpenAI's recommended default for Codex.
-	Codex: Gpt55,
+	// OpenAI's best coding model, and their recommended default for Codex —
+	// same rationale as the line above.
+	//
+	// ⚠️ Same two-for-one as ClaudeCode: this also decides what a
+	// high-complexity codex session resolves to, because the default wins its
+	// tier outright in ModelForTier. Both movements are intended here. Sol is
+	// the only frontier-tier model codex runs, so the tier answer would have
+	// landed on it either way; what the default adds is the picker's
+	// preselection, moving off Gpt55.
+	Codex: Gpt56Sol,
 	// Balanced, and reuses an org's existing Anthropic credential — so opencode
 	// is usable without configuring a new provider.
 	Opencode: ClaudeSonnet46,
