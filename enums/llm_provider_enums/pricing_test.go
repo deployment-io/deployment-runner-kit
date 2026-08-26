@@ -13,6 +13,13 @@ func TestRateFor_PublishedRatesArePinned(t *testing.T) {
 		Gpt55:      {InputPerM: 5.00, CachedPerM: 0.50, OutputPerM: 30.00},
 		Gpt54:      {InputPerM: 2.50, CachedPerM: 0.25, OutputPerM: 15.00},
 		Gpt53Codex: {InputPerM: 1.75, CachedPerM: 0.175, OutputPerM: 14.00},
+		// The 5.6 family at STANDARD list price, not the launch promo — pinning
+		// the promo would bake an expiry date into a table nothing re-checks.
+		// These also do not price the long-context surcharge; see the comment on
+		// modelProviderRate for why that understatement is deliberate.
+		Gpt56Sol:   {InputPerM: 5.00, CachedPerM: 0.50, OutputPerM: 30.00},
+		Gpt56Terra: {InputPerM: 2.00, CachedPerM: 0.20, OutputPerM: 12.00},
+		Gpt56Luna:  {InputPerM: 0.20, CachedPerM: 0.02, OutputPerM: 1.20},
 	}
 	for m, want := range cases {
 		got, ok := m.RateFor(OpenAIDirect)

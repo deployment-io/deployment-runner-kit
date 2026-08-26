@@ -65,6 +65,16 @@ const (
 	MinimaxM25
 	Grok43
 
+	// OpenAI's 5.6 generation, three points on one curve rather than three
+	// specialisations: Sol is the flagship coding model, Terra the balanced
+	// everyday one, Luna the cost-efficient one. Unlike the codex lineup above
+	// — where 5.3-codex is task-specialised and the three sit at one tier —
+	// these ARE cleanly tiered, so modelToTier ranks them frontier/balanced/fast
+	// and tier resolution has a real answer for codex at last.
+	Gpt56Sol
+	Gpt56Terra
+	Gpt56Luna
+
 	MaxModel // always add models before MaxModel
 )
 
@@ -95,6 +105,11 @@ var modelToString = map[Model]string{
 	Glm5:           "glm-5",
 	MinimaxM25:     "minimax-m2.5",
 	Grok43:         "grok-4.3",
+	// OpenAI's own API ids, verbatim — these reach the codex CLI as --model, so
+	// any deviation is a request for a model that does not exist.
+	Gpt56Sol:   "gpt-5.6-sol",
+	Gpt56Terra: "gpt-5.6-terra",
+	Gpt56Luna:  "gpt-5.6-luna",
 }
 
 var stringToModel = func() map[string]Model {
@@ -127,9 +142,10 @@ func GetModel(s string) (Model, error) {
 // modelKey is a model's identifier in a DOCUMENT-KEY position, as distinct
 // from the wire id String() returns.
 //
-// It exists because SEVEN wire ids contain a period — grok-4.3, gpt-5.4,
-// gpt-5.5, gpt-5.3-codex, deepseek-v3.2, glm-4.7, minimax-m2.5 — and a period
-// is a PATH SEPARATOR in a MongoDB update key. Storing an org's pin under
+// It exists because TEN wire ids contain a period — grok-4.3, gpt-5.4,
+// gpt-5.5, gpt-5.3-codex, deepseek-v3.2, glm-4.7, minimax-m2.5 and the three
+// gpt-5.6-* — and a period is a PATH SEPARATOR in a MongoDB update key.
+// Storing an org's pin under
 // "llmConfig.modelProviderPreference.grok-4.3" wrote
 // {"grok-4": {"3": "openrouter"}}: a nested document under a key nobody named,
 // which then refused to decode into map[string]string and took the entire
@@ -165,6 +181,13 @@ var modelKey = map[Model]string{
 	Glm5:           "glm-5",
 	MinimaxM25:     "minimax-m2-5",
 	Grok43:         "grok-4-3",
+	// Dot-free forms of gpt-5.6-sol and friends. The wire id keeps its period
+	// because that is what OpenAI's API answers to; the key drops it because a
+	// dotted key nests itself, which is the production failure this map exists
+	// to prevent.
+	Gpt56Sol:   "gpt-5-6-sol",
+	Gpt56Terra: "gpt-5-6-terra",
+	Gpt56Luna:  "gpt-5-6-luna",
 }
 
 // Key returns the stable identifier to use where a model id becomes a KEY —
@@ -291,6 +314,9 @@ var modelToVendor = map[Model]Vendor{
 	Glm5:           VendorZAI,
 	MinimaxM25:     VendorMiniMax,
 	Grok43:         VendorXAI,
+	Gpt56Sol:       VendorOpenAI,
+	Gpt56Terra:     VendorOpenAI,
+	Gpt56Luna:      VendorOpenAI,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.
@@ -473,6 +499,9 @@ var modelToDisplayName = map[Model]string{
 	Glm5:           "GLM-5",
 	MinimaxM25:     "MiniMax M2.5",
 	Grok43:         "Grok 4.3",
+	Gpt56Sol:       "GPT-5.6 Sol",
+	Gpt56Terra:     "GPT-5.6 Terra",
+	Gpt56Luna:      "GPT-5.6 Luna",
 }
 
 // DisplayName returns the human-facing name, falling back to the wire id so an
@@ -515,6 +544,21 @@ var legacyModels = map[Model]bool{
 	// Claude models: Bedrock model access is granted per account, and an org
 	// with 4.7 enabled and not 5 should still have something to run.
 	Glm47: true,
+	// TWICE superseded — 5.5 came first, then the 5.6 family — which is what
+	// separates these two from Gpt55. 5.5 is one generation back and stays a
+	// normal offering; these are two, and offering three current-looking OpenAI
+	// generations makes the picker a history lesson.
+	//
+	// Still runnable and still offered, just last: codex reaches OpenAI's API
+	// directly, so unlike the Bedrock cases above there is no per-account access
+	// question, only a question of what to put in front of someone first.
+	//
+	// Neither was ever the codex default, so nothing here is the paired edit
+	// ClaudeOpus48 needed — that pairing exists because marking the DEFAULT
+	// legacy is the incoherent combination. The default moved to Gpt56Sol in the
+	// same change for its own reason: it is the better coding model.
+	Gpt54:      true,
+	Gpt53Codex: true,
 }
 
 // IsLegacy reports whether a newer generation of this model exists.
@@ -598,9 +642,10 @@ var modelToTier = map[Model]Tier{
 	ClaudeSonnet46: TierBalanced,
 	ClaudeOpus45:   TierFrontier,
 	ClaudeOpus48:   TierFrontier,
-	// The codex lineup is not cleanly tiered — 5.3-codex is task-specialised
-	// rather than weaker — so all three sit at balanced and the recommendation
-	// falls back to the agent's default.
+	// The pre-5.6 codex lineup is not cleanly tiered — 5.3-codex is
+	// task-specialised rather than weaker — so all three sit at balanced and the
+	// recommendation falls back to the agent's default. The 5.6 family below
+	// does tier cleanly and is what codex now resolves through.
 	Gpt55:      TierBalanced,
 	Gpt53Codex: TierBalanced,
 	Gpt54:      TierBalanced,
@@ -628,6 +673,15 @@ var modelToTier = map[Model]Tier{
 	Glm5:           TierBalanced,
 	MinimaxM25:     TierBalanced,
 	Grok43:         TierBalanced,
+
+	// The 5.6 family, tiered as OpenAI positions it: Sol is the flagship coding
+	// model, Terra the balanced everyday one, Luna the cost-efficient one. This
+	// is the first OpenAI lineup that spans bands rather than sitting flat at
+	// balanced, so codex now has a fast tier at all — before this, a "simple"
+	// request fell back to the agent default.
+	Gpt56Sol:   TierFrontier,
+	Gpt56Terra: TierBalanced,
+	Gpt56Luna:  TierFast,
 }
 
 // Tier returns the model's capability band.
