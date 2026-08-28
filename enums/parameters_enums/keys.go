@@ -127,11 +127,22 @@ const (
 	TokenBudget                  Key = 113 //int64 - hard cap on total tokens consumed within this dispatch (0 = uncapped)
 	AgentboxImage                Key = 114 //string - the agentbox Docker image reference (e.g., "deploymenthq/agentbox:1.0.0")
 	AgentType                    Key = 115 //string - agentbox AGENT_TYPE selector ("claude-code" in v1)
-	AdditionalAllowedHosts       Key = 116 //string - comma-separated extra hostnames the agentbox proxy will allow (org-level + future per-Task additions; runner unions sources before passing to container)
+	AdditionalAllowedHosts       Key = 116 //string - comma-separated extra hostnames the agentbox proxy will allow; the RESOLVED org-level + per-Task union, stamped by deployment-server at pickup (per-Task half arrives as TaskAdditionalAllowedHosts below)
 	ClaudeCodeVersion            Key = 117 //string - pinned @anthropic-ai/claude-code version installed inside agentbox (e.g., "2.1.141"); empty = use the agentbox image's Dockerfile-baked default
 	CodexVersion                 Key = 118 //string - pinned @openai/codex version installed inside agentbox (e.g., "0.136.0"); empty = use the agentbox image's Dockerfile-baked default
 	SessionUUID                  Key = 119 //string - stable Assistant-session UUID forwarded to agentbox as SESSION_ID (the agent's --session-id) for conversation continuity / crash recovery across re-runs
 	AgentProvider                Key = 120 //string - llm_provider_enums.Provider slug ("anthropic-direct", "aws-bedrock", "anthropic-subscription", ...) telling the runner HOW to authenticate. Typed sibling of AgentType, deliberately NOT a marker inside AgentEnvVars: this is a control decision the runner acts on, not payload for the container.
+	// TaskAdditionalAllowedHosts carries the Task's OWN half of the allowlist,
+	// stamped at Job creation from Task.AdditionalAllowedHosts like every other
+	// Task-derived execution input (Model, MaxTurns, AgentType, AgentboxImage,
+	// ...). Deliberately a SEPARATE key from AdditionalAllowedHosts above, which
+	// carries the org+Task union deployment-server computes at pickup and the
+	// runner reads. Writing the Task's list into that key would make it
+	// unrecoverable once the union overwrote it, and a host removed from org
+	// settings could then never be dropped from a pending Job — breaking the
+	// property that org edits take effect at the next pickup. Two lists, two
+	// keys: this one is the immutable input, that one the resolved output.
+	TaskAdditionalAllowedHosts Key = 121 //string - comma-separated hostnames from Task.AdditionalAllowedHosts; unioned with the org list into AdditionalAllowedHosts at pickup, never read by the runner directly
 )
 
 var keyToString = map[Key]string{
@@ -255,6 +266,7 @@ var keyToString = map[Key]string{
 	CodexVersion:                 "codex version",
 	SessionUUID:                  "session uuid",
 	AgentProvider:                "agent provider",
+	TaskAdditionalAllowedHosts:   "task additional allowed hosts",
 }
 
 func (k Key) String() string {
@@ -386,6 +398,7 @@ var keyMap = map[Key]string{
 	CodexVersion:                 "118",
 	SessionUUID:                  "119",
 	AgentProvider:                "120",
+	TaskAdditionalAllowedHosts:   "121",
 }
 
 func (k Key) Key() (string, error) {
