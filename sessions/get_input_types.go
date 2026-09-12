@@ -43,6 +43,16 @@ type GetInputArgsV1 struct {
 	types.AuthArgsV1
 	JobID   string
 	AfterTs int64
+	// DeliveredAtAfterTs lists the message IDs the runner has already delivered
+	// whose Ts equals AfterTs. The query is inclusive at AfterTs because Ts is
+	// whole seconds and two turns can share one; without this the server has to
+	// re-send the boundary message every poll — and with attachments that
+	// message carries up to megabytes of extracted text — for the runner to
+	// discard. Naming the delivered IDs lets the server exclude exactly those
+	// while the watermark stays put. Almost always one ID; resets whenever
+	// AfterTs advances. Additive: an older server ignores it and re-sends as
+	// before, which the runner still dedups.
+	DeliveredAtAfterTs []string
 }
 
 type GetInputReplyV1 struct {
