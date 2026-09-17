@@ -17,6 +17,29 @@ type UserMessageDtoV1 struct {
 	// references a file that isn't there yet. Additive: gob drops the field on
 	// a runner that predates it, which then delivers the turn text alone.
 	Attachments []SessionAttachmentDtoV1
+	// RepositoriesAdded carries the repos this turn appended to the live session
+	// (plans/PLAN_SESSION_ADD_REPOSITORY §1). The runner clones each into
+	// <work>/<Index>-<Name> BEFORE delivering the turn — Content's
+	// <repositories-added> block names those directories — so the agent never
+	// sees a turn pointing at a checkout that isn't there yet. Additive: gob
+	// drops the field on a runner that predates it, which then delivers the
+	// turn text alone, naming a directory that doesn't exist (accepted).
+	RepositoriesAdded []SessionRepositoryDtoV1
+}
+
+// SessionRepositoryDtoV1 is one repo added to a live session, in the shape the
+// runner's session checkout consumes. Index is SERVER-assigned (the repo's
+// position in Session.Repositories) and is the only thing the runner uses to
+// build the checkout directory — it never derives one itself, so the server's
+// pointer block and the runner's clone always agree. No token rides along: the
+// runner mints one from InstallationID, exactly as the session-start clone does.
+type SessionRepositoryDtoV1 struct {
+	Index          int
+	Name           string // "<owner>/<repo>"; an interior '/' nests on disk
+	CloneURL       string
+	Branch         string
+	InstallationID string
+	Provider       string // matches oauth_enums.Provider.String()
 }
 
 // SessionAttachmentDtoV1 is one attachment's extracted content. Raw uploads
