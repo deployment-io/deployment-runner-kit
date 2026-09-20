@@ -35,6 +35,13 @@ const (
 	RunAssistantSession                      Type = 30
 	BuildInfraContext                        Type = 31
 	MaterializeContext                       Type = 32
+	// RunReviewStage sits between RunAgentStep and CommitAndPush in a Task
+	// Step Job: it reviews the diff the implementer produced against the
+	// Task's spec and routes must-fix findings back to the implementer
+	// before anything is committed. A Job whose review participation is Off
+	// returns immediately, so the chain is identical for every Task that
+	// does not use the stage.
+	RunReviewStage Type = 33
 )
 
 var typeToString = map[Type]string{
@@ -70,6 +77,7 @@ var typeToString = map[Type]string{
 	RunAssistantSession:                      "Run Assistant Session",
 	BuildInfraContext:                        "Build Infra Context",
 	MaterializeContext:                       "Materialize Context",
+	RunReviewStage:                           "Run Review Stage",
 }
 
 func (t Type) String() string {
