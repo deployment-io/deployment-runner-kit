@@ -143,6 +143,36 @@ const (
 	// property that org edits take effect at the next pickup. Two lists, two
 	// keys: this one is the immutable input, that one the resolved output.
 	TaskAdditionalAllowedHosts Key = 121 //string - comma-separated hostnames from Task.AdditionalAllowedHosts; unioned with the org list into AdditionalAllowedHosts at pickup, never read by the runner directly
+	// ReviewParticipation is the RESOLVED review participation for this Step
+	// Job — the Task's ReviewMode already clamped against the org's policy at
+	// Job creation (kit's agent_policy_models.ClampParticipation). Never zero
+	// at the runner: zero means "inherit" on the Task, and inheritance is
+	// resolved control-plane side so the runner never looks up a policy.
+	ReviewParticipation Key = 122 //int64 - resolved review_enums.Participation (1 On, 2 Advisory, 3 Off)
+	// ReviewMustFixThresholds carries the org's must-fix policy already
+	// resolved per parameter, so the runner can decide MustFixOpen without
+	// importing kit. One entry per parameter that has a NON-ZERO resolved
+	// threshold; an absent parameter is annotate-only, which is why absence
+	// and a zero value mean the same thing and neither is ever met.
+	ReviewMustFixThresholds Key = 123 //string - JSON object of decimal parameter value -> decimal severity value, e.g. {"1":4,"2":4}
+	// ReviewSpec is what the change is reviewed AGAINST: the Task's TaskSpec
+	// snapshot as JSON, or the Task description when the Task carries no spec
+	// (every directly-created Task).
+	ReviewSpec Key = 124 //string - JSON of task_models.TaskSpec, or the Task description when Spec is nil
+
+	// 125-128 are RESERVED for the per-stage review agent follow-up:
+	//
+	//	ReviewAgentType      Key = 125
+	//	ReviewModel          Key = 126
+	//	ReviewAgentEnvVars   Key = 127
+	//	ReviewAgentProvider  Key = 128
+	//
+	// Reserved rather than left to the next author to pick, for the same
+	// reason the enum frozen-value tests cite: these strings are PERSISTED in
+	// job.Parameters, so a number claimed later by something else would
+	// reinterpret documents already written. The Review stage today runs on
+	// the Job's existing AgentType / Model / AgentEnvVars / AgentProvider, so
+	// nothing stamps these yet.
 )
 
 var keyToString = map[Key]string{
@@ -267,6 +297,9 @@ var keyToString = map[Key]string{
 	SessionUUID:                  "session uuid",
 	AgentProvider:                "agent provider",
 	TaskAdditionalAllowedHosts:   "task additional allowed hosts",
+	ReviewParticipation:          "review participation",
+	ReviewMustFixThresholds:      "review must fix thresholds",
+	ReviewSpec:                   "review spec",
 }
 
 func (k Key) String() string {
@@ -399,6 +432,9 @@ var keyMap = map[Key]string{
 	SessionUUID:                  "119",
 	AgentProvider:                "120",
 	TaskAdditionalAllowedHosts:   "121",
+	ReviewParticipation:          "122",
+	ReviewMustFixThresholds:      "123",
+	ReviewSpec:                   "124",
 }
 
 func (k Key) Key() (string, error) {
