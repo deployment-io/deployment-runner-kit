@@ -160,19 +160,38 @@ const (
 	// (every directly-created Task).
 	ReviewSpec Key = 124 //string - JSON of task_models.TaskSpec, or the Task description when Spec is nil
 
-	// 125-128 are RESERVED for the per-stage review agent follow-up:
+	// ReviewAgentType / ReviewModel are the Task's own REVIEWER, stamped AT
+	// JOB CREATION (kit's run_task_step setReviewParameters) from
+	// Task.ReviewModel, with the agent derived from the model by
+	// task_models.AgentTypeForModel. There is no reviewer agent-type input
+	// anywhere: a reviewer IS a model, and the agent follows from it.
 	//
-	//	ReviewAgentType      Key = 125
-	//	ReviewModel          Key = 126
-	//	ReviewAgentEnvVars   Key = 127
-	//	ReviewAgentProvider  Key = 128
+	// BOTH ARE ABSENT when the Task carries no ReviewModel, and absence is
+	// the whole backward-compatibility story. A Job with neither key runs its
+	// review on the Job's own AgentType / Model / AgentEnvVars /
+	// AgentProvider, exactly as every Job did before the reviewer existed —
+	// so an old runner that ignores 125-128 and a new runner that finds them
+	// missing behave identically.
+	ReviewAgentType Key = 125 //string - agentbox AGENT_TYPE for REVIEW rounds only, derived from ReviewModel. Absent = the review runs on the Job's own AgentType.
+	ReviewModel     Key = 126 //string - the reviewer's model identifier. Absent = the review runs on the Job's own Model.
+	// ReviewAgentEnvVars / ReviewAgentProvider are the reviewer's half of the
+	// credential pair, stamped AT PICKUP by deployment-server
+	// (injectTaskAgentEnvVars) beside the implementer's 108/120 and resolved
+	// from the SAME org read — only when ReviewAgentType is present.
 	//
-	// Reserved rather than left to the next author to pick, for the same
-	// reason the enum frozen-value tests cite: these strings are PERSISTED in
-	// job.Parameters, so a number claimed later by something else would
-	// reinterpret documents already written. The Review stage today runs on
-	// the Job's existing AgentType / Model / AgentEnvVars / AgentProvider, so
-	// nothing stamps these yet.
+	// ReviewAgentEnvVars is NEVER PERSISTED. Like AgentEnvVars 108 it carries
+	// decrypted secrets that live in the in-memory job.Parameters for one
+	// pickup response and travel to the runner over RPC; nothing writes them
+	// back to the Job document.
+	//
+	// ReviewAgentProvider is the presence test the runner keys on: 125 present
+	// with 128 absent means the reviewer's credentials could not be resolved,
+	// and the round fails naming the reviewer rather than quietly running on
+	// the implementer's. An EMPTY or absent 127 with 128 present is
+	// legitimate — for Bedrock or a strict subscription org the bundle holds
+	// no secrets at all, exactly as 108 already can be empty.
+	ReviewAgentEnvVars  Key = 127 //map[string]string - decrypted env vars for the REVIEW round's agent spawn. Injected at pickup; never persisted back to MongoDB.
+	ReviewAgentProvider Key = 128 //string - llm_provider_enums.Provider slug for the reviewer. Typed sibling of ReviewAgentType, stamped at pickup from the same org read as 127.
 )
 
 var keyToString = map[Key]string{
@@ -300,6 +319,10 @@ var keyToString = map[Key]string{
 	ReviewParticipation:          "review participation",
 	ReviewMustFixThresholds:      "review must fix thresholds",
 	ReviewSpec:                   "review spec",
+	ReviewAgentType:              "review agent type",
+	ReviewModel:                  "review model",
+	ReviewAgentEnvVars:           "review agent env vars",
+	ReviewAgentProvider:          "review agent provider",
 }
 
 func (k Key) String() string {
@@ -435,6 +458,10 @@ var keyMap = map[Key]string{
 	ReviewParticipation:          "122",
 	ReviewMustFixThresholds:      "123",
 	ReviewSpec:                   "124",
+	ReviewAgentType:              "125",
+	ReviewModel:                  "126",
+	ReviewAgentEnvVars:           "127",
+	ReviewAgentProvider:          "128",
 }
 
 func (k Key) Key() (string, error) {
