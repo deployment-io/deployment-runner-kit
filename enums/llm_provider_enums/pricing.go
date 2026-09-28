@@ -73,6 +73,12 @@ var modelProviderRate = map[Model]map[Provider]Rate{
 	Gpt56Sol:   {OpenAIDirect: {InputPerM: 5.00, CachedPerM: 0.50, OutputPerM: 30.00}},
 	Gpt56Terra: {OpenAIDirect: {InputPerM: 2.00, CachedPerM: 0.20, OutputPerM: 12.00}},
 	Gpt56Luna:  {OpenAIDirect: {InputPerM: 0.20, CachedPerM: 0.02, OutputPerM: 1.20}},
+	// GPT-6, standard list price, same 10% cached ratio. Like 5.6 above, the
+	// long-context surcharge (2x input, 1.5x output past the threshold) is NOT
+	// priced, so a run that crosses it is priced low.
+	Gpt6Astra: {OpenAIDirect: {InputPerM: 10.00, CachedPerM: 1.00, OutputPerM: 50.00}},
+	Gpt6Sol:   {OpenAIDirect: {InputPerM: 2.00, CachedPerM: 0.20, OutputPerM: 10.00}},
+	Gpt6Luna:  {OpenAIDirect: {InputPerM: 0.10, CachedPerM: 0.01, OutputPerM: 0.50}},
 }
 
 // RateFor returns the published rate for this model at this provider.

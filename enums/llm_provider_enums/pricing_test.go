@@ -20,6 +20,9 @@ func TestRateFor_PublishedRatesArePinned(t *testing.T) {
 		Gpt56Sol:   {InputPerM: 5.00, CachedPerM: 0.50, OutputPerM: 30.00},
 		Gpt56Terra: {InputPerM: 2.00, CachedPerM: 0.20, OutputPerM: 12.00},
 		Gpt56Luna:  {InputPerM: 0.20, CachedPerM: 0.02, OutputPerM: 1.20},
+		Gpt6Astra:  {InputPerM: 10.00, CachedPerM: 1.00, OutputPerM: 50.00},
+		Gpt6Sol:    {InputPerM: 2.00, CachedPerM: 0.20, OutputPerM: 10.00},
+		Gpt6Luna:   {InputPerM: 0.10, CachedPerM: 0.01, OutputPerM: 0.50},
 	}
 	for m, want := range cases {
 		got, ok := m.RateFor(OpenAIDirect)

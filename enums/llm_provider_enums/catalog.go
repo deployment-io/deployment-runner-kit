@@ -47,8 +47,8 @@ import (
 // or legacyModels, never a side effect of adding a model.
 var agentTypeToModels = map[AgentType][]Model{
 	ClaudeCode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48,
-		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5},
-	Codex: {Gpt55, Gpt53Codex, Gpt54, Gpt56Sol, Gpt56Terra, Gpt56Luna},
+		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5, ClaudeOpus55, ClaudeFable51},
+	Codex: {Gpt55, Gpt53Codex, Gpt54, Gpt56Sol, Gpt56Terra, Gpt56Luna, Gpt6Astra, Gpt6Sol, Gpt6Luna},
 	Opencode: {ClaudeHaiku45, ClaudeSonnet45, ClaudeSonnet46, ClaudeOpus45, ClaudeOpus48, Gpt55, NovaProV1,
 		ClaudeSonnet5, ClaudeOpus5, ClaudeFable5,
 		// The Bedrock-only lineup. opencode is the only agent that can reach
@@ -59,7 +59,11 @@ var agentTypeToModels = map[AgentType][]Model{
 		// OpenAI key of its own, so it reaches them without going near codex.
 		// Appended, so opencode's tier answers are unchanged: Opus 5 still wins
 		// frontier and Haiku 4.5 still wins fast, both listed earlier.
-		Gpt56Sol, Gpt56Terra, Gpt56Luna},
+		Gpt56Sol, Gpt56Terra, Gpt56Luna,
+		// Opus 5.5 before Fable 5.1, so opencode's first non-legacy frontier
+		// model is the cheaper one — see the Model declaration.
+		ClaudeOpus55, ClaudeFable51,
+		Gpt6Astra, Gpt6Sol, Gpt6Luna},
 }
 
 // modelToProviders lists which providers can serve each model.
@@ -84,6 +88,13 @@ var modelToProviders = map[Model][]Provider{
 	Gpt56Sol:   {OpenAIDirect},
 	Gpt56Terra: {OpenAIDirect},
 	Gpt56Luna:  {OpenAIDirect},
+	// GPT-6: OpenAIDirect only, like 5.6. Bedrock DOES carry these
+	// (us.openai.gpt-6-sol and friends), but no agent here reaches OpenAI
+	// models through Bedrock yet — codex speaks api.openai.com only — so
+	// listing it would offer a picker entry whose Task fails at pickup.
+	Gpt6Astra: {OpenAIDirect},
+	Gpt6Sol:   {OpenAIDirect},
+	Gpt6Luna:  {OpenAIDirect},
 	// Bedrock-only: Amazon does not offer Nova through a direct API, so this
 	// is the first model whose single provider is a cloud route rather than
 	// its vendor. claude-code and codex cannot run it — agentTypeToModels keeps
@@ -96,6 +107,8 @@ var modelToProviders = map[Model][]Provider{
 	ClaudeSonnet5:  {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	ClaudeOpus5:    {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	ClaudeFable5:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeOpus55:   {AnthropicDirect, AnthropicSubscription, AWSBedrock},
+	ClaudeFable51:  {AnthropicDirect, AnthropicSubscription, AWSBedrock},
 	// The open-weight lineup. No vendor here has a direct provider of its own,
 	// so these reach us through a cloud, a platform or a gateway.
 	//
@@ -503,7 +516,11 @@ var agentTypeToDefaultModel = map[AgentType]Model{
 	// high-complexity session resolves to — the default wins its tier outright
 	// in ModelForTier. Change it deliberately, never as a side effect of adding
 	// a model.
-	ClaudeCode: ClaudeOpus5,
+	//
+	// Opus 5.5 since September 2026: Anthropic's recommended starting model,
+	// and cheaper than the Opus 5 it replaces, which went legacy in the same
+	// change.
+	ClaudeCode: ClaudeOpus55,
 	// OpenAI's best coding model, and their recommended default for Codex —
 	// same rationale as the line above.
 	//
@@ -513,10 +530,15 @@ var agentTypeToDefaultModel = map[AgentType]Model{
 	// the only frontier-tier model codex runs, so the tier answer would have
 	// landed on it either way; what the default adds is the picker's
 	// preselection, moving off Gpt55.
-	Codex: Gpt56Sol,
+	//
+	// GPT-6 Sol since September 2026. Unlike 5.6 Sol it is BALANCED, not
+	// frontier, so the default now wins balanced and a high-complexity codex
+	// session resolves to GPT-6 Astra instead — see modelToTier.
+	Codex: Gpt6Sol,
 	// Balanced, and reuses an org's existing Anthropic credential — so opencode
-	// is usable without configuring a new provider.
-	Opencode: ClaudeSonnet46,
+	// is usable without configuring a new provider. Sonnet 5 since Sonnet 4.6
+	// went legacy.
+	Opencode: ClaudeSonnet5,
 }
 
 // DefaultModel returns the model to preselect for this agent.
