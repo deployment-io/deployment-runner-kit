@@ -141,9 +141,14 @@ func TestModel_WireStringsAreStable(t *testing.T) {
 		Grok43:         "grok-4.3",
 		// OpenAI's API ids verbatim, periods and all — this is the string that
 		// reaches the codex CLI as --model.
-		Gpt56Sol:   "gpt-5.6-sol",
-		Gpt56Terra: "gpt-5.6-terra",
-		Gpt56Luna:  "gpt-5.6-luna",
+		Gpt56Sol:      "gpt-5.6-sol",
+		Gpt56Terra:    "gpt-5.6-terra",
+		Gpt56Luna:     "gpt-5.6-luna",
+		ClaudeOpus55:  "claude-opus-5-5",
+		ClaudeFable51: "claude-fable-5-1",
+		Gpt6Astra:     "gpt-6-astra",
+		Gpt6Sol:       "gpt-6-sol",
+		Gpt6Luna:      "gpt-6-luna",
 	}
 	// EXHAUSTIVE. Without this, adding a model leaves its wire id unpinned and
 	// this test still passes — which is exactly what happened when Sonnet 4.5
@@ -188,9 +193,15 @@ func TestModel_StorageKeysAreStable(t *testing.T) {
 		MinimaxM25:     "minimax-m2-5",
 		Grok43:         "grok-4-3",
 		// Dot-free, unlike the wire ids above — the divergence is the point.
-		Gpt56Sol:   "gpt-5-6-sol",
-		Gpt56Terra: "gpt-5-6-terra",
-		Gpt56Luna:  "gpt-5-6-luna",
+		Gpt56Sol:      "gpt-5-6-sol",
+		Gpt56Terra:    "gpt-5-6-terra",
+		Gpt56Luna:     "gpt-5-6-luna",
+		ClaudeOpus55:  "claude-opus-5-5",
+		ClaudeFable51: "claude-fable-5-1",
+		// Dot-free already, so key == wire id.
+		Gpt6Astra: "gpt-6-astra",
+		Gpt6Sol:   "gpt-6-sol",
+		Gpt6Luna:  "gpt-6-luna",
 	}
 	// EXHAUSTIVE, for the same reason TestModel_WireStringsAreStable is.
 	if len(cases) != len(modelKey) {
@@ -407,6 +418,51 @@ func TestCatalog_BedrockPrefixPinsTheModelVersion(t *testing.T) {
 	}
 }
 
+// Discovery matches every profile id in the account against a model, then takes
+// the newest. So a match on a NEIGHBOURING version is not a near miss — it is
+// the answer: us.anthropic.claude-opus-5-5 sorts above us.anthropic.claude-opus-5,
+// and a Contains() match sent every Opus 5 task to Opus 5.5.
+//
+// The ids below are real shapes, from Bedrock and models.dev.
+func TestMatchesBedrockProfile_StopsAtAVersionBoundary(t *testing.T) {
+	cases := []struct {
+		m    Model
+		id   string
+		want bool
+	}{
+		// Every suffix Bedrock appends to a model id.
+		{ClaudeOpus5, "us.anthropic.claude-opus-5", true},
+		{ClaudeOpus48, "us.anthropic.claude-opus-4-8-v1:0", true},
+		{ClaudeSonnet45, "eu.anthropic.claude-sonnet-4-5-20250929-v1:0", true},
+		{ClaudeHaiku45, "apac.anthropic.claude-haiku-4-5-20251001-v1:0", true},
+		{NovaProV1, "eu.amazon.nova-pro-v1:0", true},
+		{ClaudeOpus55, "global.anthropic.claude-opus-5-5", true},
+		{ClaudeFable51, "us.anthropic.claude-fable-5-1", true},
+
+		// The regression: a longer version extending this one's.
+		{ClaudeOpus5, "us.anthropic.claude-opus-5-5", false},
+		{ClaudeOpus5, "us.anthropic.claude-opus-5-5-v1:0", false},
+		{ClaudeFable5, "us.anthropic.claude-fable-5-1", false},
+		// ...and the reverse, which Contains() already got right.
+		{ClaudeOpus55, "us.anthropic.claude-opus-5", false},
+		// The older 4.x/4.5 case the version pinning was introduced for.
+		{ClaudeOpus5, "us.anthropic.claude-opus-4-5-20251101-v1:0", false},
+
+		// The prefix must start a dotted segment.
+		{ClaudeOpus5, "claude-opus-5", false},
+		{ClaudeOpus5, "us.anthropic.xclaude-opus-5", false},
+		// A date is exactly eight digits — nine is not a date.
+		{ClaudeOpus5, "us.anthropic.claude-opus-5-202610011", false},
+		// Not on Bedrock at all.
+		{Gpt6Sol, "us.openai.gpt-6-sol", false},
+	}
+	for _, c := range cases {
+		if got := c.m.MatchesBedrockProfile(c.id); got != c.want {
+			t.Errorf("%s.MatchesBedrockProfile(%q) = %v, want %v", c.m, c.id, got, c.want)
+		}
+	}
+}
+
 func TestCatalog_SubscriptionIsClaudeCodeOnly(t *testing.T) {
 	// The runner refuses subscription auth for any harness but claude-code — a
 	// genuine `claude` CLI is what passes Anthropic's client-identity check, so
@@ -599,6 +655,10 @@ func TestBedrockModelsHaveAConsideredGeographyRule(t *testing.T) {
 		ClaudeSonnet5:  keep,
 		ClaudeOpus5:    keep,
 		ClaudeFable5:   keep,
+		// Both listed geography-prefixed in models.dev (us./eu./global. for Opus
+		// 5.5; us./global. for Fable 5.1), like every Claude model before them.
+		ClaudeOpus55:   keep,
+		ClaudeFable51:  keep,
 		NovaProV1:      strip,
 		Qwen3Coder480B: strip,
 		Qwen3CoderNext: strip,
@@ -1159,25 +1219,25 @@ func TestTierResolution_IsPinned(t *testing.T) {
 		tier  Tier
 		want  Model
 	}{
+		// September 2026: Opus 5.5 is the default and wins frontier; Sonnet 4.6
+		// went legacy, so balanced moves to Sonnet 5 — the first non-legacy
+		// balanced model in the lineup.
 		{ClaudeCode, TierFast, ClaudeHaiku45},
-		{ClaudeCode, TierBalanced, ClaudeSonnet46},
-		{ClaudeCode, TierFrontier, ClaudeOpus5},
-		// opencode's default is Sonnet 4.6, so its frontier answer comes from
-		// the first non-legacy frontier model instead — a different code path
-		// reaching the same model, which is why both are pinned.
+		{ClaudeCode, TierBalanced, ClaudeSonnet5},
+		{ClaudeCode, TierFrontier, ClaudeOpus55},
+		// opencode's default is Sonnet 5, so its frontier answer comes from the
+		// first non-legacy frontier model instead — a different code path
+		// reaching the same model, which is why both are pinned. Opus 5.5 beats
+		// Fable 5.1 only because it is listed first.
 		{Opencode, TierFast, ClaudeHaiku45},
-		{Opencode, TierBalanced, ClaudeSonnet46},
-		{Opencode, TierFrontier, ClaudeOpus5},
-		// codex, which had no tiered answer at all until the 5.6 family: its
-		// three older models all sit at balanced, so every tier fell through to
-		// the default. Now fast and frontier are real answers.
-		//
-		// Balanced stays on gpt-5.5 — Terra is the newer balanced model but is
-		// appended after it, and appending deliberately cannot move a resolution
-		// on its own. Moving it would be an edit to agentTypeToModels' order.
-		{Codex, TierFast, Gpt56Luna},
-		{Codex, TierBalanced, Gpt55},
-		{Codex, TierFrontier, Gpt56Sol},
+		{Opencode, TierBalanced, ClaudeSonnet5},
+		{Opencode, TierFrontier, ClaudeOpus55},
+		// codex on GPT-6, with the whole 5.x line legacy. Sol is balanced and the
+		// default, so frontier is Astra — a deliberate $10/$50 step for
+		// high-complexity work, not a side effect.
+		{Codex, TierFast, Gpt6Luna},
+		{Codex, TierBalanced, Gpt6Sol},
+		{Codex, TierFrontier, Gpt6Astra},
 	}
 	for _, c := range cases {
 		if got := ModelForTier(c.agent, c.tier); got != c.want {
@@ -1282,6 +1342,8 @@ func TestCatalog_GenerationsCoexistWithoutShadowing(t *testing.T) {
 	pairs := []struct{ older, newer Model }{
 		{ClaudeSonnet45, ClaudeSonnet46},
 		{ClaudeOpus45, ClaudeOpus48},
+		{ClaudeOpus5, ClaudeOpus55},
+		{ClaudeFable5, ClaudeFable51},
 	}
 	for _, p := range pairs {
 		o, n := p.older.BedrockProfilePrefix(), p.newer.BedrockProfilePrefix()
@@ -1289,11 +1351,19 @@ func TestCatalog_GenerationsCoexistWithoutShadowing(t *testing.T) {
 			t.Errorf("%v/%v: both generations need a Bedrock prefix", p.older, p.newer)
 			continue
 		}
-		// Neither may be a prefix of the other, or discovery's Contains match
-		// would let one generation resolve to the other's profile — the silent
-		// wrong-model swap the pinning exists to prevent.
-		if strings.HasPrefix(o, n) || strings.HasPrefix(n, o) {
-			t.Errorf("%q and %q overlap; discovery could resolve one to the other", o, n)
+		// Neither may match the other's profile, or discovery would let one
+		// generation resolve to the other — the silent wrong-model swap the
+		// pinning exists to prevent. Checked through the real matcher, not by
+		// comparing prefixes: "claude-opus-5" IS a string prefix of
+		// "claude-opus-5-5", and that is fine only because matching stops at a
+		// version boundary.
+		for _, geo := range []string{"us.anthropic.", "eu.anthropic.", "global.anthropic."} {
+			if p.older.MatchesBedrockProfile(geo + n) {
+				t.Errorf("%v matches %v's profile %q; discovery would resolve one to the other", p.older, p.newer, geo+n)
+			}
+			if p.newer.MatchesBedrockProfile(geo + o) {
+				t.Errorf("%v matches %v's profile %q; discovery would resolve one to the other", p.newer, p.older, geo+o)
+			}
 		}
 		// Both must be offered by the same agents, or picking the older one
 		// silently changes which harness runs.
@@ -1380,13 +1450,12 @@ func TestNothingDependsOnDeclarationOrder(t *testing.T) {
 		t.Errorf("frontier tier = %v, a superseded model", got)
 	}
 	// The agent's own default wins its tier outright, wherever it happens to sit
-	// in the lineup — codex lists gpt-5.6-sol fourth of six and frontier still
-	// resolves to it, so the answer comes from the explicit choice rather than a
-	// list index. This case used to read "an untiered lineup falls back to the
-	// default", which only held while every codex model sat at balanced; the 5.6
-	// family tiers cleanly, so the same invariant is pinned at frontier now.
-	if got := ModelForTier(Codex, TierFrontier); got != Codex.DefaultModel() {
-		t.Errorf("codex frontier = %v, want its default %v", got, Codex.DefaultModel())
+	// in the lineup — codex lists gpt-6-sol eighth of nine, after gpt-5.5 at the
+	// same tier, and balanced still resolves to it, so the answer comes from the
+	// explicit choice rather than a list index. Pinned at whichever tier the
+	// default sits in, so re-banding a model moves the check with it.
+	if got := ModelForTier(Codex, Codex.DefaultModel().Tier()); got != Codex.DefaultModel() {
+		t.Errorf("codex %s = %v, want its default %v", Codex.DefaultModel().Tier(), got, Codex.DefaultModel())
 	}
 	// And a superseded model never wins a band, however it is listed.
 	if got := ModelForTier(Codex, TierBalanced); got.IsLegacy() {

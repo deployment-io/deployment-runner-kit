@@ -1,6 +1,9 @@
 package llm_provider_enums
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Model is a LOGICAL model id — the model a user picks, independent of which
 // provider serves it or which harness runs it.
@@ -75,6 +78,26 @@ const (
 	Gpt56Terra
 	Gpt56Luna
 
+	// The Claude generation after Opus 5 / Fable 5, both released September
+	// 2026. Opus 5.5 is cheaper than Opus 5 ($4/$20 against $5/$25) and is
+	// Anthropic's recommended starting model; Fable 5.1 is Fable 5's successor
+	// at the same price. Sonnet 5 and Haiku 4.5 have no successor yet.
+	//
+	// Opus 5.5 is declared BEFORE Fable 5.1 on purpose: it is appended to
+	// opencode's list in this order, and opencode's frontier answer is the first
+	// non-legacy frontier model — which must be Opus 5.5, not the dearer Fable.
+	ClaudeOpus55
+	ClaudeFable51
+
+	// OpenAI's GPT-6 generation (Astra 2026-09-03, Sol and Luna 2026-09-22),
+	// superseding the whole 5.x lineup. Tiered like the 5.6 family but one band
+	// lower in the middle: Astra is the flagship, Sol is priced like Sonnet 5
+	// and is OpenAI's model for coding and agentic work, Luna is the
+	// cost-efficient one.
+	Gpt6Astra
+	Gpt6Sol
+	Gpt6Luna
+
 	MaxModel // always add models before MaxModel
 )
 
@@ -107,9 +130,16 @@ var modelToString = map[Model]string{
 	Grok43:         "grok-4.3",
 	// OpenAI's own API ids, verbatim — these reach the codex CLI as --model, so
 	// any deviation is a request for a model that does not exist.
-	Gpt56Sol:   "gpt-5.6-sol",
-	Gpt56Terra: "gpt-5.6-terra",
-	Gpt56Luna:  "gpt-5.6-luna",
+	Gpt56Sol:      "gpt-5.6-sol",
+	Gpt56Terra:    "gpt-5.6-terra",
+	Gpt56Luna:     "gpt-5.6-luna",
+	ClaudeOpus55:  "claude-opus-5-5",
+	ClaudeFable51: "claude-fable-5-1",
+	// No period in these, unlike every earlier OpenAI id — so the wire id and
+	// the storage key coincide.
+	Gpt6Astra: "gpt-6-astra",
+	Gpt6Sol:   "gpt-6-sol",
+	Gpt6Luna:  "gpt-6-luna",
 }
 
 var stringToModel = func() map[string]Model {
@@ -185,9 +215,14 @@ var modelKey = map[Model]string{
 	// because that is what OpenAI's API answers to; the key drops it because a
 	// dotted key nests itself, which is the production failure this map exists
 	// to prevent.
-	Gpt56Sol:   "gpt-5-6-sol",
-	Gpt56Terra: "gpt-5-6-terra",
-	Gpt56Luna:  "gpt-5-6-luna",
+	Gpt56Sol:      "gpt-5-6-sol",
+	Gpt56Terra:    "gpt-5-6-terra",
+	Gpt56Luna:     "gpt-5-6-luna",
+	ClaudeOpus55:  "claude-opus-5-5",
+	ClaudeFable51: "claude-fable-5-1",
+	Gpt6Astra:     "gpt-6-astra",
+	Gpt6Sol:       "gpt-6-sol",
+	Gpt6Luna:      "gpt-6-luna",
 }
 
 // Key returns the stable identifier to use where a model id becomes a KEY —
@@ -234,6 +269,14 @@ var modelToBedrockProfilePrefix = map[Model]string{
 	ClaudeSonnet5: "claude-sonnet-5",
 	ClaudeOpus5:   "claude-opus-5",
 	ClaudeFable5:  "claude-fable-5",
+	// ⚠️ THESE TWO ARE THE FIRST PREFIXES THAT EXTEND A SIBLING'S:
+	// "claude-opus-5" is a prefix of "claude-opus-5-5", and "claude-fable-5" of
+	// "claude-fable-5-1". Contains() alone therefore lets an Opus 5 request match
+	// us.anthropic.claude-opus-5-5 — and the newest-first sort then PICKS it.
+	// That is why discovery matches through MatchesBedrockProfile, which
+	// requires the prefix to end at a version boundary.
+	ClaudeOpus55:  "claude-opus-5-5",
+	ClaudeFable51: "claude-fable-5-1",
 }
 
 // BedrockProfilePrefix returns the version-pinned prefix for a model, or ""
@@ -242,6 +285,57 @@ var modelToBedrockProfilePrefix = map[Model]string{
 func (m Model) BedrockProfilePrefix() string {
 	return modelToBedrockProfilePrefix[m]
 }
+
+// MatchesBedrockProfile reports whether a Bedrock inference-profile id is a
+// profile for exactly this model — any date or revision, never a neighbouring
+// version.
+//
+// ⚠️ USE THIS, NOT strings.Contains(id, prefix). Contains cannot tell
+// us.anthropic.claude-opus-5 from us.anthropic.claude-opus-5-5, and discovery
+// sorts newest-first, so an Opus 5 task would silently resolve to Opus 5.5 the
+// day AWS published it. Pinning the version in the prefix is not enough once
+// one version string extends another.
+//
+// The prefix must start a dotted segment (after "us.anthropic.") and be
+// followed by nothing, or by what Bedrock appends to a model id and never to a
+// version number:
+//
+//	""            us.anthropic.claude-opus-5
+//	":"           eu.amazon.nova-pro-v1:0
+//	"-v"          us.anthropic.claude-opus-4-8-v1:0
+//	"-YYYYMMDD"   eu.anthropic.claude-sonnet-4-5-20250929-v1:0
+//
+// A "-5" or "-1" after the prefix is a longer VERSION, which is exactly the
+// case to reject. The date is told apart from it by length: eight digits.
+func (m Model) MatchesBedrockProfile(id string) bool {
+	prefix := m.BedrockProfilePrefix()
+	if prefix == "" {
+		return false
+	}
+	i := strings.Index(id, prefix)
+	if i <= 0 || id[i-1] != '.' {
+		return false
+	}
+	rest := id[i+len(prefix):]
+	switch {
+	case rest == "", strings.HasPrefix(rest, ":"), strings.HasPrefix(rest, "-v"):
+		return true
+	case len(rest) >= 9 && rest[0] == '-' && isDigits(rest[1:9]) && (len(rest) == 9 || !isDigit(rest[9])):
+		return true
+	}
+	return false
+}
+
+func isDigits(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if !isDigit(s[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func isDigit(c byte) bool { return c >= '0' && c <= '9' }
 
 // Vendor is who MAKES a model — a property of the model, never of the
 // provider serving it.
@@ -317,6 +411,11 @@ var modelToVendor = map[Model]Vendor{
 	Gpt56Sol:       VendorOpenAI,
 	Gpt56Terra:     VendorOpenAI,
 	Gpt56Luna:      VendorOpenAI,
+	ClaudeOpus55:   VendorAnthropic,
+	ClaudeFable51:  VendorAnthropic,
+	Gpt6Astra:      VendorOpenAI,
+	Gpt6Sol:        VendorOpenAI,
+	Gpt6Luna:       VendorOpenAI,
 }
 
 // Vendor returns who makes this model, independent of how it is reached.
@@ -502,6 +601,11 @@ var modelToDisplayName = map[Model]string{
 	Gpt56Sol:       "GPT-5.6 Sol",
 	Gpt56Terra:     "GPT-5.6 Terra",
 	Gpt56Luna:      "GPT-5.6 Luna",
+	ClaudeOpus55:   "Opus 5.5",
+	ClaudeFable51:  "Fable 5.1",
+	Gpt6Astra:      "GPT-6 Astra",
+	Gpt6Sol:        "GPT-6 Sol",
+	Gpt6Luna:       "GPT-6 Luna",
 }
 
 // DisplayName returns the human-facing name, falling back to the wire id so an
@@ -559,6 +663,29 @@ var legacyModels = map[Model]bool{
 	// same change for its own reason: it is the better coding model.
 	Gpt54:      true,
 	Gpt53Codex: true,
+
+	// Superseded in September 2026 by Opus 5.5, Fable 5.1 and Sonnet 5 — the
+	// set Anthropic's own models overview lists as legacy. Same package as
+	// ClaudeOpus48 above: ClaudeOpus5 was the claude-code default and
+	// ClaudeSonnet46 the opencode default, so both defaults moved in the same
+	// change (to Opus 5.5 and Sonnet 5), or TestDefaultModelIsNeverLegacy
+	// fails.
+	//
+	// Still offered, for the Bedrock reason every legacy Claude entry is: model
+	// access is granted per account and region, and Fable 5.1 is not yet in
+	// every geography (eu has Fable 5 and not 5.1).
+	ClaudeOpus5:    true,
+	ClaudeFable5:   true,
+	ClaudeSonnet46: true,
+
+	// The whole GPT-5 line, superseded by GPT-6. Gpt55 and the 5.6 family join
+	// 5.4 and 5.3-codex: kept offerable and sorted last, since a Task pinned to
+	// one still has to render and run. Gpt56Sol was the codex default, which
+	// moved to Gpt6Sol in the same change.
+	Gpt55:      true,
+	Gpt56Sol:   true,
+	Gpt56Terra: true,
+	Gpt56Luna:  true,
 }
 
 // IsLegacy reports whether a newer generation of this model exists.
@@ -682,6 +809,23 @@ var modelToTier = map[Model]Tier{
 	Gpt56Sol:   TierFrontier,
 	Gpt56Terra: TierBalanced,
 	Gpt56Luna:  TierFast,
+
+	// Opus 5.5 is the new frontier default for claude-code. Fable 5.1 is
+	// frontier too, and above it, but at 2.5x the price it is reached by an
+	// explicit pick only — the claude-code default wins frontier outright, and
+	// Opus 5.5 precedes it for opencode.
+	ClaudeOpus55:  TierFrontier,
+	ClaudeFable51: TierFrontier,
+
+	// GPT-6, banded by price and OpenAI's positioning rather than by the name
+	// its predecessor used. Sol was frontier in 5.6; in 6 it is the balanced
+	// model — Sonnet 5's price, and OpenAI's pick for coding — with Astra above
+	// it at $10/$50. So a high-complexity codex request now resolves to Astra,
+	// the codex counterpart of Fable rather than of Opus: a deliberate cost
+	// step, pinned in TestTierResolution_IsPinned.
+	Gpt6Astra: TierFrontier,
+	Gpt6Sol:   TierBalanced,
+	Gpt6Luna:  TierFast,
 }
 
 // Tier returns the model's capability band.
