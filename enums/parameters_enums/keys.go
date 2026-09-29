@@ -192,6 +192,15 @@ const (
 	// no secrets at all, exactly as 108 already can be empty.
 	ReviewAgentEnvVars  Key = 127 //map[string]string - decrypted env vars for the REVIEW round's agent spawn. Injected at pickup; never persisted back to MongoDB.
 	ReviewAgentProvider Key = 128 //string - llm_provider_enums.Provider slug for the reviewer. Typed sibling of ReviewAgentType, stamped at pickup from the same org read as 127.
+	// ReviewFixThresholds is the FIX half of the review policy, stamped AT
+	// JOB CREATION beside ReviewMustFixThresholds 123 and resolved per
+	// parameter the same way: a finding at or above its parameter's fix
+	// threshold is sent back to the implementer for a fix round, while 123
+	// stays the HOLD threshold that decides MustFixOpen. One entry per
+	// parameter with a non-zero resolved fix severity. ABSENT (a Job created
+	// by an older control plane) means the fix threshold equals the hold
+	// threshold — exactly today's behaviour.
+	ReviewFixThresholds Key = 129 //string - JSON object of decimal parameter value -> decimal severity value, e.g. {"1":2,"2":2}
 )
 
 var keyToString = map[Key]string{
@@ -323,6 +332,7 @@ var keyToString = map[Key]string{
 	ReviewModel:                  "review model",
 	ReviewAgentEnvVars:           "review agent env vars",
 	ReviewAgentProvider:          "review agent provider",
+	ReviewFixThresholds:          "review fix thresholds",
 }
 
 func (k Key) String() string {
@@ -462,6 +472,7 @@ var keyMap = map[Key]string{
 	ReviewModel:                  "126",
 	ReviewAgentEnvVars:           "127",
 	ReviewAgentProvider:          "128",
+	ReviewFixThresholds:          "129",
 }
 
 func (k Key) Key() (string, error) {
