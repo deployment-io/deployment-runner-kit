@@ -205,6 +205,13 @@ const (
 	// image and records nothing on the build or the deployment except the
 	// build's TaskDefinitionArn.
 	RestartOnly Key = 130 //bool
+	// ReviewShadowEffort is a TEMPORARY measurement knob: the reasoning effort
+	// for one extra, log-only review the runner runs right after review round
+	// 1 (see the runner's run_review_stage_shadow.go). Stamped at Job creation
+	// only for the organizations the control plane is configured to measure;
+	// absent means no shadow review. Remove it when per-Task review depth
+	// replaces the measurement.
+	ReviewShadowEffort Key = 131 //string - one of low, medium, high, xhigh, max
 )
 
 var keyToString = map[Key]string{
@@ -338,6 +345,7 @@ var keyToString = map[Key]string{
 	ReviewAgentProvider:          "review agent provider",
 	ReviewFixThresholds:          "review fix thresholds",
 	RestartOnly:                  "restart only",
+	ReviewShadowEffort:           "review shadow effort",
 }
 
 func (k Key) String() string {
@@ -479,6 +487,7 @@ var keyMap = map[Key]string{
 	ReviewAgentProvider:          "128",
 	ReviewFixThresholds:          "129",
 	RestartOnly:                  "130",
+	ReviewShadowEffort:           "131",
 }
 
 func (k Key) Key() (string, error) {

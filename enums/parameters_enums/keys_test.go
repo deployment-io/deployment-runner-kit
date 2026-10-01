@@ -67,3 +67,15 @@ func TestRestartOnlyKey(t *testing.T) {
 		t.Errorf("RestartOnly.Key() = %q, %v; want %q", got, err, "130")
 	}
 }
+
+func TestReviewShadowEffortKey(t *testing.T) {
+	if ReviewShadowEffort != 131 {
+		t.Errorf("ReviewShadowEffort = %d; want 131", ReviewShadowEffort)
+	}
+	if got := ReviewShadowEffort.String(); got != "review shadow effort" {
+		t.Errorf("ReviewShadowEffort.String() = %q; want %q", got, "review shadow effort")
+	}
+	if got, err := ReviewShadowEffort.Key(); err != nil || got != "131" {
+		t.Errorf("ReviewShadowEffort.Key() = %q, %v; want %q", got, err, "131")
+	}
+}
