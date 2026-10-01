@@ -201,6 +201,10 @@ const (
 	// by an older control plane) means the fix threshold equals the hold
 	// threshold — exactly today's behaviour.
 	ReviewFixThresholds Key = 129 //string - JSON object of decimal parameter value -> decimal severity value, e.g. {"1":2,"2":2}
+	// RestartOnly is set on Restart Jobs. The deploy command deploys the given
+	// image and records nothing on the build or the deployment except the
+	// build's TaskDefinitionArn.
+	RestartOnly Key = 130 //bool
 )
 
 var keyToString = map[Key]string{
@@ -333,6 +337,7 @@ var keyToString = map[Key]string{
 	ReviewAgentEnvVars:           "review agent env vars",
 	ReviewAgentProvider:          "review agent provider",
 	ReviewFixThresholds:          "review fix thresholds",
+	RestartOnly:                  "restart only",
 }
 
 func (k Key) String() string {
@@ -473,6 +478,7 @@ var keyMap = map[Key]string{
 	ReviewAgentEnvVars:           "127",
 	ReviewAgentProvider:          "128",
 	ReviewFixThresholds:          "129",
+	RestartOnly:                  "130",
 }
 
 func (k Key) Key() (string, error) {
