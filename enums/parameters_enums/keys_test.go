@@ -55,3 +55,15 @@ func TestUnmappedKeyErrors(t *testing.T) {
 		t.Error("an unmapped key must error, not return an empty key")
 	}
 }
+
+func TestRestartOnlyKey(t *testing.T) {
+	if RestartOnly != 130 {
+		t.Errorf("RestartOnly = %d; want 130", RestartOnly)
+	}
+	if got := RestartOnly.String(); got != "restart only" {
+		t.Errorf("RestartOnly.String() = %q; want %q", got, "restart only")
+	}
+	if got, err := RestartOnly.Key(); err != nil || got != "130" {
+		t.Errorf("RestartOnly.Key() = %q, %v; want %q", got, err, "130")
+	}
+}
