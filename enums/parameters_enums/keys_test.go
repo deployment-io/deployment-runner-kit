@@ -79,3 +79,26 @@ func TestReviewShadowEffortKey(t *testing.T) {
 		t.Errorf("ReviewShadowEffort.Key() = %q, %v; want %q", got, err, "131")
 	}
 }
+
+func TestContextRefreshKeys(t *testing.T) {
+	cases := []struct {
+		key    Key
+		value  Key
+		str    string
+		decStr string
+	}{
+		{RefreshInfraContext, 132, "refresh infra context", "132"},
+		{RefreshRepoCatalog, 133, "refresh repo catalog", "133"},
+	}
+	for _, c := range cases {
+		if c.key != c.value {
+			t.Errorf("key = %d; want %d", c.key, c.value)
+		}
+		if got := c.key.String(); got != c.str {
+			t.Errorf("%d.String() = %q; want %q", c.value, got, c.str)
+		}
+		if got, err := c.key.Key(); err != nil || got != c.decStr {
+			t.Errorf("%d.Key() = %q, %v; want %q", c.value, got, err, c.decStr)
+		}
+	}
+}

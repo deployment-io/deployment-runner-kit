@@ -36,6 +36,13 @@ func shouldAddPolicy(mode runner_enums.Mode, cloud runner_enums.TargetCloud) boo
 
 func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cpuStr, organizationID, runnerRegion string,
 	mode runner_enums.Mode, cloud runner_enums.TargetCloud) error {
+	return AddAwsPolicyForDeploymentRunnerWithContext(context.TODO(), policyType, osStr, cpuStr, organizationID, runnerRegion, mode, cloud)
+}
+
+// AddAwsPolicyForDeploymentRunnerWithContext is AddAwsPolicyForDeploymentRunner bounded by ctx: the
+// IAM calls and the wait for a new policy to take effect return once ctx is done.
+func AddAwsPolicyForDeploymentRunnerWithContext(ctx context.Context, policyType iam_policy_enums.Type, osStr, cpuStr, organizationID, runnerRegion string,
+	mode runner_enums.Mode, cloud runner_enums.TargetCloud) error {
 	if !shouldAddPolicy(mode, cloud) {
 		return nil
 	}
@@ -59,7 +66,7 @@ func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cp
 	runnerPolicyName := getDeploymentRunnerPolicyName(osStr, cpuStr, organizationID, runnerRegion)
 
 	//get inline policy
-	getRolePolicyOutput, err := iamClient.GetRolePolicy(context.TODO(), &iam.GetRolePolicyInput{
+	getRolePolicyOutput, err := iamClient.GetRolePolicy(ctx, &iam.GetRolePolicyInput{
 		PolicyName: aws.String(runnerPolicyName),
 		RoleName:   aws.String(runnerTaskRoleName),
 	})
@@ -126,7 +133,7 @@ func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cp
 		if err != nil {
 			return err
 		}
-		_, err = iamClient.PutRolePolicy(context.TODO(), &iam.PutRolePolicyInput{
+		_, err = iamClient.PutRolePolicy(ctx, &iam.PutRolePolicyInput{
 			PolicyDocument: aws.String(string(newPolicyDocument)),
 			PolicyName:     aws.String(runnerPolicyName),
 			RoleName:       aws.String(runnerTaskRoleName),
@@ -135,7 +142,11 @@ func AddAwsPolicyForDeploymentRunner(policyType iam_policy_enums.Type, osStr, cp
 			return err
 		}
 		//sleep for 60 seconds since new policies are added. AWS is not fast to update.
-		time.Sleep(60 * time.Second)
+		select {
+		case <-time.After(60 * time.Second):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
 	return nil
 }
