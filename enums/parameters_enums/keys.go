@@ -212,6 +212,16 @@ const (
 	// absent means no shadow review. Remove it when per-Task review depth
 	// replaces the measurement.
 	ReviewShadowEffort Key = 131 //string - one of low, medium, high, xhigh, max
+	// RefreshInfraContext asks the runner to rescan its own infrastructure
+	// (its AWS account and region) and save the result before materializing
+	// the context. Stamped at Job creation when the stored scan is older than
+	// the control plane's maximum context age; absent means no rescan.
+	RefreshInfraContext Key = 132 //bool
+	// RefreshRepoCatalog asks the runner to have deployment-server rebuild the
+	// org's repo catalog while materializing the context. Stamped at Job
+	// creation when the stored catalog is older than the maximum context age;
+	// absent means the stored catalog is used.
+	RefreshRepoCatalog Key = 133 //bool
 )
 
 var keyToString = map[Key]string{
@@ -346,6 +356,8 @@ var keyToString = map[Key]string{
 	ReviewFixThresholds:          "review fix thresholds",
 	RestartOnly:                  "restart only",
 	ReviewShadowEffort:           "review shadow effort",
+	RefreshInfraContext:          "refresh infra context",
+	RefreshRepoCatalog:           "refresh repo catalog",
 }
 
 func (k Key) String() string {
@@ -488,6 +500,8 @@ var keyMap = map[Key]string{
 	ReviewFixThresholds:          "129",
 	RestartOnly:                  "130",
 	ReviewShadowEffort:           "131",
+	RefreshInfraContext:          "132",
+	RefreshRepoCatalog:           "133",
 }
 
 func (k Key) Key() (string, error) {
