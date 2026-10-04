@@ -222,6 +222,11 @@ const (
 	// creation when the stored catalog is older than the maximum context age;
 	// absent means the stored catalog is used.
 	RefreshRepoCatalog Key = 133 //bool
+	// ReviewLevel is the Task's review level: "thorough" asks the runner to
+	// run the review loop's rounds at a higher reasoning effort where the
+	// reviewer supports it. Stamped only for Thorough; absent means standard
+	// (the reviewer model's default effort).
+	ReviewLevel Key = 134 //string - one of standard, thorough
 )
 
 var keyToString = map[Key]string{
@@ -358,6 +363,7 @@ var keyToString = map[Key]string{
 	ReviewShadowEffort:           "review shadow effort",
 	RefreshInfraContext:          "refresh infra context",
 	RefreshRepoCatalog:           "refresh repo catalog",
+	ReviewLevel:                  "review level",
 }
 
 func (k Key) String() string {
@@ -502,6 +508,7 @@ var keyMap = map[Key]string{
 	ReviewShadowEffort:           "131",
 	RefreshInfraContext:          "132",
 	RefreshRepoCatalog:           "133",
+	ReviewLevel:                  "134",
 }
 
 func (k Key) Key() (string, error) {
