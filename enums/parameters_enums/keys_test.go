@@ -89,6 +89,7 @@ func TestContextRefreshKeys(t *testing.T) {
 	}{
 		{RefreshInfraContext, 132, "refresh infra context", "132"},
 		{RefreshRepoCatalog, 133, "refresh repo catalog", "133"},
+		{ReviewLevel, 134, "review level", "134"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
