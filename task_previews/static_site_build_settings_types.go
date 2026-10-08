@@ -16,13 +16,15 @@ type StaticSiteBuildSettingsArgsV1 struct {
 }
 
 // StaticSiteBuildSettingsReplyV1 holds the org's static-site deployments of the
-// repository and, when there is at least one, the org's preview configuration.
+// repository and the org's preview configuration, whether or not it deploys the
+// repository (a runner builds the preview of a repository it doesn't deploy from
+// settings it detects, with the same configuration).
 type StaticSiteBuildSettingsReplyV1 struct {
 	// Sites are the org's undeleted static-site deployments of the repository,
 	// sorted by DeploymentName. Empty when deployment.io doesn't deploy it.
 	Sites []StaticSiteBuildSettingsV1
-	// ConfigurationSet is true when Sites isn't empty and the org has a preview
-	// configuration; Variables and Files are its decrypted values. False → no values.
+	// ConfigurationSet is true whenever the org has a preview configuration, Sites
+	// empty or not; Variables and Files are its decrypted values. False → no values.
 	ConfigurationSet bool
 	Variables        map[string]string
 	Files            []PreviewFileV1
