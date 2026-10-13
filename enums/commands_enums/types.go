@@ -42,11 +42,11 @@ const (
 	// returns immediately, so the chain is identical for every Task that
 	// does not use the stage.
 	RunReviewStage Type = 33
-	// RunVerifyStage is the QA stage. It sits between RunReviewStage and
+	// RunQAStage is the QA stage. It sits between RunReviewStage and
 	// CommitAndPush in a Task Step Job: a separate agent run deploys the
 	// Task's static-site previews and checks the spec's acceptance criteria
 	// in a real browser before anything is committed.
-	RunVerifyStage Type = 34
+	RunQAStage Type = 34
 )
 
 var typeToString = map[Type]string{
@@ -83,7 +83,7 @@ var typeToString = map[Type]string{
 	BuildInfraContext:                        "Build Infra Context",
 	MaterializeContext:                       "Materialize Context",
 	RunReviewStage:                           "Run Review Stage",
-	RunVerifyStage:                           "Run Verify Stage",
+	RunQAStage:                               "Run QA Stage",
 }
 
 func (t Type) String() string {

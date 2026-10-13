@@ -104,10 +104,10 @@ type UpdateTaskStepStageDtoV1 struct {
 const (
 	StageImplement = "implement"
 	StageReview    = "review"
-	// StageVerify is the QA stage (kit's stage_enums.Verify); its wire name
-	// is "qa" because "verify" already names the implementer's own
-	// build/test self-check.
-	StageVerify = "qa"
+	// StageQA is the QA stage (kit's stage_enums.QA). Named QA, not Verify,
+	// everywhere in code: "verify" already names the implementer's own
+	// build/test self-check and the verify_preview_* tools.
+	StageQA = "qa"
 )
 
 type UpdateTaskStepStageArgsV1 struct {
