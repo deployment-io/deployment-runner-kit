@@ -6,7 +6,7 @@ import "testing"
 // deployment-server; changing one is a wire break.
 func TestQAWireNames(t *testing.T) {
 	cases := map[string]string{
-		StageVerify:           "qa",
+		StageQA:               "qa",
 		QACriterionPassed:     "passed",
 		QACriterionFailed:     "failed",
 		QACriterionNotChecked: "not_checked",
