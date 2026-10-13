@@ -227,6 +227,23 @@ const (
 	// reviewer supports it. Stamped only for Thorough; absent means standard
 	// (the reviewer model's default effort).
 	ReviewLevel Key = 134 //string - one of standard, thorough
+	// QAModel / QAAgentType are the QA run's model and agent, stamped AT JOB
+	// CREATION (kit's run_task_step setQAParameters) from Task.QAModel, else
+	// Task.ReviewModel, with the agent derived from the model by
+	// AgentTypeForModel. BOTH ARE ABSENT when the Task has neither, and
+	// absence means the QA run uses the Job's own Model and AgentType.
+	QAModel     Key = 135 //string - the QA run's model identifier. Absent = the QA run uses the Job's own Model.
+	QAAgentType Key = 136 //string - agentbox AGENT_TYPE for the QA run only, derived from QAModel. Absent = the QA run uses the Job's own AgentType.
+	// QAAgentEnvVars / QAAgentProvider are the QA run's half of the agent
+	// credentials, injected by deployment-server AT PICKUP from the same org
+	// read as the implementer's and the reviewer's — only when QAAgentType is
+	// present. QAAgentEnvVars is NEVER PERSISTED, like AgentEnvVars 108.
+	QAAgentEnvVars  Key = 137 //map[string]string - decrypted env vars for the QA run's agent spawn. Injected at pickup; never persisted back to MongoDB.
+	QAAgentProvider Key = 138 //string - llm_provider_enums.Provider slug for the QA run. Typed sibling of QAAgentType, stamped at pickup from the same org read as 137.
+	// VerifyBrowserImage is the verify-browser image verify_preview_rendered
+	// runs its checks in. Stamped AT JOB CREATION and pinned across a Task's
+	// Steps, like AgentboxImage 114. Absent = the runner's own default.
+	VerifyBrowserImage Key = 139 //string - the verify-browser Docker image reference (e.g., "docker.io/deploymenthq/verify-browser:1.0.0")
 )
 
 var keyToString = map[Key]string{
@@ -364,6 +381,11 @@ var keyToString = map[Key]string{
 	RefreshInfraContext:          "refresh infra context",
 	RefreshRepoCatalog:           "refresh repo catalog",
 	ReviewLevel:                  "review level",
+	QAModel:                      "qa model",
+	QAAgentType:                  "qa agent type",
+	QAAgentEnvVars:               "qa agent env vars",
+	QAAgentProvider:              "qa agent provider",
+	VerifyBrowserImage:           "verify browser image",
 }
 
 func (k Key) String() string {
@@ -509,6 +531,11 @@ var keyMap = map[Key]string{
 	RefreshInfraContext:          "132",
 	RefreshRepoCatalog:           "133",
 	ReviewLevel:                  "134",
+	QAModel:                      "135",
+	QAAgentType:                  "136",
+	QAAgentEnvVars:               "137",
+	QAAgentProvider:              "138",
+	VerifyBrowserImage:           "139",
 }
 
 func (k Key) Key() (string, error) {

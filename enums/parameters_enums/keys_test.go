@@ -90,6 +90,11 @@ func TestContextRefreshKeys(t *testing.T) {
 		{RefreshInfraContext, 132, "refresh infra context", "132"},
 		{RefreshRepoCatalog, 133, "refresh repo catalog", "133"},
 		{ReviewLevel, 134, "review level", "134"},
+		{QAModel, 135, "qa model", "135"},
+		{QAAgentType, 136, "qa agent type", "136"},
+		{QAAgentEnvVars, 137, "qa agent env vars", "137"},
+		{QAAgentProvider, 138, "qa agent provider", "138"},
+		{VerifyBrowserImage, 139, "verify browser image", "139"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
