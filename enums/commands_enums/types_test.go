@@ -13,3 +13,12 @@ func TestRunQAStage(t *testing.T) {
 		t.Errorf("RunReviewStage = %d; want 33", RunReviewStage)
 	}
 }
+
+func TestRunProductionQA(t *testing.T) {
+	if RunProductionQA != 35 {
+		t.Errorf("RunProductionQA = %d; want 35", RunProductionQA)
+	}
+	if got := RunProductionQA.String(); got != "Run Production QA" {
+		t.Errorf("RunProductionQA.String() = %q; want %q", got, "Run Production QA")
+	}
+}

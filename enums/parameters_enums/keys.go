@@ -244,6 +244,10 @@ const (
 	// runs its checks in. Stamped AT JOB CREATION and pinned across a Task's
 	// Steps, like AgentboxImage 114. Absent = the runner's own default.
 	VerifyBrowserImage Key = 139 //string - the verify-browser Docker image reference (e.g., "docker.io/deploymenthq/verify-browser:1.0.0")
+	// ProductionQATargets is what a production QA Job checks, stamped AT JOB
+	// CREATION by app-server: one entry per deployed repository, the URL the
+	// QA run opens and the custom domains it may be redirected to.
+	ProductionQATargets Key = 140 //string - JSON array of {"repository": "<index>-<owner/name>", "url": "<https url>", "hosts": ["<custom domain>", ...]}
 )
 
 var keyToString = map[Key]string{
@@ -386,6 +390,7 @@ var keyToString = map[Key]string{
 	QAAgentEnvVars:               "qa agent env vars",
 	QAAgentProvider:              "qa agent provider",
 	VerifyBrowserImage:           "verify browser image",
+	ProductionQATargets:          "production qa targets",
 }
 
 func (k Key) String() string {
@@ -536,6 +541,7 @@ var keyMap = map[Key]string{
 	QAAgentEnvVars:               "137",
 	QAAgentProvider:              "138",
 	VerifyBrowserImage:           "139",
+	ProductionQATargets:          "140",
 }
 
 func (k Key) Key() (string, error) {
