@@ -47,6 +47,12 @@ const (
 	// Task's static-site previews and checks the spec's acceptance criteria
 	// in a real browser before anything is committed.
 	RunQAStage Type = 34
+	// RunProductionQA is the only command of a production QA Job: once a
+	// deployed Task's deliveries have all ended, one report-only agentbox QA
+	// run checks the Task's acceptance criteria against the deployed
+	// repositories' production URLs, with a read-only browser. It has no
+	// checkout, no Step and no fix round.
+	RunProductionQA Type = 35
 )
 
 var typeToString = map[Type]string{
@@ -84,6 +90,7 @@ var typeToString = map[Type]string{
 	MaterializeContext:                       "Materialize Context",
 	RunReviewStage:                           "Run Review Stage",
 	RunQAStage:                               "Run QA Stage",
+	RunProductionQA:                          "Run Production QA",
 }
 
 func (t Type) String() string {
