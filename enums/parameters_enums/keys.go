@@ -248,6 +248,13 @@ const (
 	// CREATION by app-server: one entry per deployed repository, the URL the
 	// QA run opens and the custom domains it may be redirected to.
 	ProductionQATargets Key = 140 //string - JSON array of {"repository": "<index>-<owner/name>", "url": "<https url>", "hosts": ["<custom domain>", ...]}
+	// PreDeployCommand is a web or private service's pre-deploy command (e.g.
+	// database migrations). The runner runs it once, as a one-off task from the
+	// newly registered task definition, before the service is created or
+	// updated; a failure fails the deploy. Stamped AT JOB CREATION only when
+	// new code deploys (a build of a commit) — never on Restart or Rollback.
+	// Absent means no pre-deploy command.
+	PreDeployCommand Key = 141 //string
 )
 
 var keyToString = map[Key]string{
@@ -391,6 +398,7 @@ var keyToString = map[Key]string{
 	QAAgentProvider:              "qa agent provider",
 	VerifyBrowserImage:           "verify browser image",
 	ProductionQATargets:          "production qa targets",
+	PreDeployCommand:             "pre deploy command",
 }
 
 func (k Key) String() string {
@@ -542,6 +550,7 @@ var keyMap = map[Key]string{
 	QAAgentProvider:              "138",
 	VerifyBrowserImage:           "139",
 	ProductionQATargets:          "140",
+	PreDeployCommand:             "141",
 }
 
 func (k Key) Key() (string, error) {
