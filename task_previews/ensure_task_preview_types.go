@@ -52,10 +52,24 @@ type EnsureTaskPreviewArgsV1 struct {
 // PreviewID is its id (used for bucket + CloudFront resource naming, matching the
 // <org>-<deploymentID> production scheme). ExistingDistID is the CloudFront
 // distribution id persisted from a prior deploy — empty on the first (create), set
-// on reuse (re-upload into the existing one). Web/DB service types will extend this
-// with their own resource handles as those tools land.
+// on reuse (re-upload into the existing one). DB service types will extend this with
+// their own resource handles as those tools land.
 type EnsureTaskPreviewReplyV1 struct {
 	PreviewID      string
 	ExistingDistID string
 	ExistingDomain string // persisted CloudFront domain, for the reuse-path URL (empty on first deploy)
+
+	// Web-service fields: set only for a web-service Deployment, empty for other
+	// types. DeploymentName is always set for one; the handles are the AWS resources
+	// persisted from a prior deploy (Deployments.UpdateV1) — empty on the first ensure,
+	// set on reuse so the runner updates the preview's existing ECR repository, load
+	// balancer and ECS service instead of creating new ones.
+	DeploymentName     string // the preview Deployment's name
+	EcrRepositoryUri   string
+	AlbSecurityGroupId string
+	TargetGroupArn     string
+	ListenerArnPort80  string
+	LoadBalancerArn    string
+	LoadBalancerDns    string
+	EcsServiceArn      string
 }
