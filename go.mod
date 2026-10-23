@@ -1,8 +1,8 @@
 module github.com/deployment-io/deployment-runner-kit
 
-go 1.25.0
+go 1.26.0
 
-toolchain go1.25.14
+toolchain go1.27.3
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.43.3
@@ -45,5 +45,5 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/sendgrid/rest v2.6.9+incompatible // indirect
 	github.com/stretchr/testify v1.10.0 // indirect
-	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/net v0.61.0 // indirect
 )
