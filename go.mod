@@ -25,7 +25,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ses v1.29.7
 	github.com/aws/aws-sdk-go-v2/service/sts v1.28.6
 	github.com/sendgrid/sendgrid-go v3.16.0+incompatible
-	go.mongodb.org/mongo-driver v1.17.7
+	go.mongodb.org/mongo-driver v1.17.10
 )
 
 require (
