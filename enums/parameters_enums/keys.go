@@ -59,79 +59,68 @@ const (
 
 	//CpuArchitecture         Key = 47
 
-	ResponseHeaders              Key = 48
-	Domains                      Key = 49
-	RedirectDomain               Key = 50
-	AcmCertificateArn            Key = 51
-	CertificateRegion            Key = 52
-	CertificateDomain            Key = 53
-	CertificateID                Key = 54
-	ParentDomain                 Key = 55
-	CreateMultipleNats           Key = 56
-	ErrorPages                   Key = 57
-	PreviewID                    Key = 58
-	IsPreview                    Key = 59
-	EcsClusterName               Key = 60
-	ShouldSendChatOutput         Key = 61
-	JobID                        Key = 62
-	SecretName                   Key = 63
-	SecretValue                  Key = 64
-	IsPrivateRegistry            Key = 65
-	DeployedFromImage            Key = 66
-	IsPrivateService             Key = 67
-	DeploymentName               Key = 68
-	EnvironmentName              Key = 69
-	RdsEngine                    Key = 70
-	CpuMemoryRDSInstance         Key = 71
-	AllocatedStorage             Key = 72
-	MaxAllocatedStorage          Key = 73
-	UseMultiAz                   Key = 74
-	UseDeletionProtection        Key = 75
-	ApplyRdsChangesImmediately   Key = 76
-	ShouldUpdatePassword         Key = 77
-	DockerFilePath               Key = 78
-	StartCommand                 Key = 79
-	NixPacksUsernameKey          Key = 80
-	NixPacksPasswordKey          Key = 81
-	OrganizationIdFromJob        Key = 82
-	AutomationData               Key = 83 //AutomationDtoV1
-	AutomationID                 Key = 84
-	SmtpUsername                 Key = 85
-	SmtpPassword                 Key = 86
-	SmtpHost                     Key = 87
-	SmtpPort                     Key = 88
-	EmailToolFromAddress         Key = 89
-	DebugAutomation              Key = 90
-	DebugOpenAICallsInAutomation Key = 91
-	AgentData                    Key = 92 //AgentDtoV1
-	AgentID                      Key = 93
-	DebugAgent                   Key = 94
-	DebugOpenAICallsInAgent      Key = 95
-	IsSpa                        Key = 96
-	StartTime                    Key = 97
-	EndTime                      Key = 98
-	SearchPattern                Key = 99
-	JobOutput                    Key = 100 //string - JSON-encoded structured output from job commands
-	DebugGetDeploymentLogs       Key = 101
-	TaskID                       Key = 102
-	StepIndex                    Key = 103 //int64 - 0-based index into Task.Steps
-	TaskBranchName               Key = 104 //string - shared Task branch name across all repos
-	Repositories                 Key = 105 //string - JSON-encoded []tasks.RepositoryEntry
-	TaskTitle                    Key = 106 //string - Task.Title; surfaced in commit message trailer
-	DashboardURL                 Key = 107 //string - dashboard base URL (e.g., https://app.deployment.io); used to construct Task-URL trailer
-	AgentEnvVars                 Key = 108 //map[string]string - decrypted env vars for agent spawn (e.g., {ANTHROPIC_API_KEY: ...}). Injected by deployment-server at Job pickup; never persisted back to MongoDB.
-	StepPrompt                   Key = 109 //string - the Step's prompt passed to agentbox via STEP_PROMPT env var
-	PreviousStepsSummary         Key = 110 //string - summary of prior Steps' agent outputs; passed via PREVIOUS_STEPS_SUMMARY. Empty for default zero-Step Tasks and for Step 0 of multi-Step Tasks.
-	Model                        Key = 111 //string - resolved model identifier (e.g., "sonnet", "opus", or pinned version)
-	MaxTurns                     Key = 112 //int64 - hard cap on agent turns within this dispatch (default 30)
-	TokenBudget                  Key = 113 //int64 - hard cap on total tokens consumed within this dispatch (0 = uncapped)
-	AgentboxImage                Key = 114 //string - the agentbox Docker image reference (e.g., "deploymenthq/agentbox:1.0.0")
-	AgentType                    Key = 115 //string - agentbox AGENT_TYPE selector ("claude-code" in v1)
-	AdditionalAllowedHosts       Key = 116 //string - comma-separated extra hostnames the agentbox proxy will allow; the RESOLVED org-level + per-Task union, stamped by deployment-server at pickup (per-Task half arrives as TaskAdditionalAllowedHosts below)
-	ClaudeCodeVersion            Key = 117 //string - pinned @anthropic-ai/claude-code version installed inside agentbox (e.g., "2.1.141"); empty = use the agentbox image's Dockerfile-baked default
-	CodexVersion                 Key = 118 //string - pinned @openai/codex version installed inside agentbox (e.g., "0.136.0"); empty = use the agentbox image's Dockerfile-baked default
-	SessionUUID                  Key = 119 //string - stable Assistant-session UUID forwarded to agentbox as SESSION_ID (the agent's --session-id) for conversation continuity / crash recovery across re-runs
-	AgentProvider                Key = 120 //string - llm_provider_enums.Provider slug ("anthropic-direct", "aws-bedrock", "anthropic-subscription", ...) telling the runner HOW to authenticate. Typed sibling of AgentType, deliberately NOT a marker inside AgentEnvVars: this is a control decision the runner acts on, not payload for the container.
+	ResponseHeaders            Key = 48
+	Domains                    Key = 49
+	RedirectDomain             Key = 50
+	AcmCertificateArn          Key = 51
+	CertificateRegion          Key = 52
+	CertificateDomain          Key = 53
+	CertificateID              Key = 54
+	ParentDomain               Key = 55
+	CreateMultipleNats         Key = 56
+	ErrorPages                 Key = 57
+	PreviewID                  Key = 58
+	IsPreview                  Key = 59
+	EcsClusterName             Key = 60
+	ShouldSendChatOutput       Key = 61
+	JobID                      Key = 62
+	SecretName                 Key = 63
+	SecretValue                Key = 64
+	IsPrivateRegistry          Key = 65
+	DeployedFromImage          Key = 66
+	IsPrivateService           Key = 67
+	DeploymentName             Key = 68
+	EnvironmentName            Key = 69
+	RdsEngine                  Key = 70
+	CpuMemoryRDSInstance       Key = 71
+	AllocatedStorage           Key = 72
+	MaxAllocatedStorage        Key = 73
+	UseMultiAz                 Key = 74
+	UseDeletionProtection      Key = 75
+	ApplyRdsChangesImmediately Key = 76
+	ShouldUpdatePassword       Key = 77
+	DockerFilePath             Key = 78
+	StartCommand               Key = 79
+	NixPacksUsernameKey        Key = 80
+	NixPacksPasswordKey        Key = 81
+	OrganizationIdFromJob      Key = 82
+	// 83–95 belonged to the removed automations feature; stored job documents may
+	// still contain them — never reuse these numbers.
+	IsSpa                  Key = 96
+	StartTime              Key = 97
+	EndTime                Key = 98
+	SearchPattern          Key = 99
+	JobOutput              Key = 100 //string - JSON-encoded structured output from job commands
+	DebugGetDeploymentLogs Key = 101
+	TaskID                 Key = 102
+	StepIndex              Key = 103 //int64 - 0-based index into Task.Steps
+	TaskBranchName         Key = 104 //string - shared Task branch name across all repos
+	Repositories           Key = 105 //string - JSON-encoded []tasks.RepositoryEntry
+	TaskTitle              Key = 106 //string - Task.Title; surfaced in commit message trailer
+	DashboardURL           Key = 107 //string - dashboard base URL (e.g., https://app.deployment.io); used to construct Task-URL trailer
+	AgentEnvVars           Key = 108 //map[string]string - decrypted env vars for agent spawn (e.g., {ANTHROPIC_API_KEY: ...}). Injected by deployment-server at Job pickup; never persisted back to MongoDB.
+	StepPrompt             Key = 109 //string - the Step's prompt passed to agentbox via STEP_PROMPT env var
+	PreviousStepsSummary   Key = 110 //string - summary of prior Steps' agent outputs; passed via PREVIOUS_STEPS_SUMMARY. Empty for default zero-Step Tasks and for Step 0 of multi-Step Tasks.
+	Model                  Key = 111 //string - resolved model identifier (e.g., "sonnet", "opus", or pinned version)
+	MaxTurns               Key = 112 //int64 - hard cap on agent turns within this dispatch (default 30)
+	TokenBudget            Key = 113 //int64 - hard cap on total tokens consumed within this dispatch (0 = uncapped)
+	AgentboxImage          Key = 114 //string - the agentbox Docker image reference (e.g., "deploymenthq/agentbox:1.0.0")
+	AgentType              Key = 115 //string - agentbox AGENT_TYPE selector ("claude-code" in v1)
+	AdditionalAllowedHosts Key = 116 //string - comma-separated extra hostnames the agentbox proxy will allow; the RESOLVED org-level + per-Task union, stamped by deployment-server at pickup (per-Task half arrives as TaskAdditionalAllowedHosts below)
+	ClaudeCodeVersion      Key = 117 //string - pinned @anthropic-ai/claude-code version installed inside agentbox (e.g., "2.1.141"); empty = use the agentbox image's Dockerfile-baked default
+	CodexVersion           Key = 118 //string - pinned @openai/codex version installed inside agentbox (e.g., "0.136.0"); empty = use the agentbox image's Dockerfile-baked default
+	SessionUUID            Key = 119 //string - stable Assistant-session UUID forwarded to agentbox as SESSION_ID (the agent's --session-id) for conversation continuity / crash recovery across re-runs
+	AgentProvider          Key = 120 //string - llm_provider_enums.Provider slug ("anthropic-direct", "aws-bedrock", "anthropic-subscription", ...) telling the runner HOW to authenticate. Typed sibling of AgentType, deliberately NOT a marker inside AgentEnvVars: this is a control decision the runner acts on, not payload for the container.
 	// TaskAdditionalAllowedHosts carries the Task's OWN half of the allowlist,
 	// stamped at Job creation from Task.AdditionalAllowedHosts like every other
 	// Task-derived execution input (Model, MaxTurns, AgentType, AgentboxImage,
@@ -305,100 +294,89 @@ var keyToString = map[Key]string{
 	TaskDefinitionArn:          "task definition arn",
 	InstallationId:             "installation id",
 	//CpuArchitecture:         "cpu architecture",
-	ResponseHeaders:              "response headers",
-	Domains:                      "domains",
-	RedirectDomain:               "redirect domain",
-	AcmCertificateArn:            "ACM certificate Arn",
-	CertificateRegion:            "Certificate region",
-	CertificateDomain:            "Certificate domain",
-	CertificateID:                "Certificate ID",
-	ParentDomain:                 "Parent domain",
-	CreateMultipleNats:           "Create multiple nats",
-	ErrorPages:                   "error pages",
-	PreviewID:                    "Preview ID",
-	IsPreview:                    "Is the job of type preview",
-	EcsClusterName:               "ECS cluster name",
-	ShouldSendChatOutput:         "Should output be sent back to the chat",
-	JobID:                        "job Id",
-	SecretName:                   "secret name",
-	SecretValue:                  "secret value",
-	IsPrivateRegistry:            "is private registry",
-	DeployedFromImage:            "deployed from image",
-	IsPrivateService:             "is private service",
-	DeploymentName:               "deployment name",
-	EnvironmentName:              "environment name",
-	RdsEngine:                    "rds engine",
-	CpuMemoryRDSInstance:         "cpu memory rds instance",
-	AllocatedStorage:             "allocated storage",
-	MaxAllocatedStorage:          "max allocated storage",
-	UseMultiAz:                   "use multi az",
-	UseDeletionProtection:        "use deletion protection",
-	ApplyRdsChangesImmediately:   "apply rds changes immediately",
-	ShouldUpdatePassword:         "should update password",
-	DockerFilePath:               "docker file path",
-	StartCommand:                 "start command",
-	NixPacksUsernameKey:          "nix packs username",
-	NixPacksPasswordKey:          "nix packs password",
-	OrganizationIdFromJob:        "org id from job",
-	AutomationData:               "automation data",
-	AutomationID:                 "automation id",
-	SmtpUsername:                 "smtp username",
-	SmtpPassword:                 "smtp password",
-	SmtpHost:                     "smtp host",
-	SmtpPort:                     "smtp port",
-	EmailToolFromAddress:         "smtp from address",
-	DebugAutomation:              "debug automation",
-	DebugOpenAICallsInAutomation: "debug open ai calls in automation",
-	AgentData:                    "agent data",
-	AgentID:                      "agent id",
-	DebugAgent:                   "debug agent",
-	DebugOpenAICallsInAgent:      "debug open ai calls in agent",
-	IsSpa:                        "is spa",
-	StartTime:                    "start time",
-	EndTime:                      "end time",
-	SearchPattern:                "search pattern",
-	JobOutput:                    "job output",
-	DebugGetDeploymentLogs:       "debug get deployment logs",
-	TaskID:                       "task id",
-	StepIndex:                    "step index",
-	TaskBranchName:               "task branch name",
-	Repositories:                 "repositories",
-	TaskTitle:                    "task title",
-	DashboardURL:                 "dashboard url",
-	AgentEnvVars:                 "agent env vars",
-	StepPrompt:                   "step prompt",
-	PreviousStepsSummary:         "previous steps summary",
-	Model:                        "model",
-	MaxTurns:                     "max turns",
-	TokenBudget:                  "token budget",
-	AgentboxImage:                "agentbox image",
-	AgentType:                    "agent type",
-	AdditionalAllowedHosts:       "additional allowed hosts",
-	ClaudeCodeVersion:            "claude code version",
-	CodexVersion:                 "codex version",
-	SessionUUID:                  "session uuid",
-	AgentProvider:                "agent provider",
-	TaskAdditionalAllowedHosts:   "task additional allowed hosts",
-	ReviewParticipation:          "review participation",
-	ReviewMustFixThresholds:      "review must fix thresholds",
-	ReviewSpec:                   "review spec",
-	ReviewAgentType:              "review agent type",
-	ReviewModel:                  "review model",
-	ReviewAgentEnvVars:           "review agent env vars",
-	ReviewAgentProvider:          "review agent provider",
-	ReviewFixThresholds:          "review fix thresholds",
-	RestartOnly:                  "restart only",
-	ReviewShadowEffort:           "review shadow effort",
-	RefreshInfraContext:          "refresh infra context",
-	RefreshRepoCatalog:           "refresh repo catalog",
-	ReviewLevel:                  "review level",
-	QAModel:                      "qa model",
-	QAAgentType:                  "qa agent type",
-	QAAgentEnvVars:               "qa agent env vars",
-	QAAgentProvider:              "qa agent provider",
-	VerifyBrowserImage:           "verify browser image",
-	ProductionQATargets:          "production qa targets",
-	PreDeployCommand:             "pre deploy command",
+	ResponseHeaders:            "response headers",
+	Domains:                    "domains",
+	RedirectDomain:             "redirect domain",
+	AcmCertificateArn:          "ACM certificate Arn",
+	CertificateRegion:          "Certificate region",
+	CertificateDomain:          "Certificate domain",
+	CertificateID:              "Certificate ID",
+	ParentDomain:               "Parent domain",
+	CreateMultipleNats:         "Create multiple nats",
+	ErrorPages:                 "error pages",
+	PreviewID:                  "Preview ID",
+	IsPreview:                  "Is the job of type preview",
+	EcsClusterName:             "ECS cluster name",
+	ShouldSendChatOutput:       "Should output be sent back to the chat",
+	JobID:                      "job Id",
+	SecretName:                 "secret name",
+	SecretValue:                "secret value",
+	IsPrivateRegistry:          "is private registry",
+	DeployedFromImage:          "deployed from image",
+	IsPrivateService:           "is private service",
+	DeploymentName:             "deployment name",
+	EnvironmentName:            "environment name",
+	RdsEngine:                  "rds engine",
+	CpuMemoryRDSInstance:       "cpu memory rds instance",
+	AllocatedStorage:           "allocated storage",
+	MaxAllocatedStorage:        "max allocated storage",
+	UseMultiAz:                 "use multi az",
+	UseDeletionProtection:      "use deletion protection",
+	ApplyRdsChangesImmediately: "apply rds changes immediately",
+	ShouldUpdatePassword:       "should update password",
+	DockerFilePath:             "docker file path",
+	StartCommand:               "start command",
+	NixPacksUsernameKey:        "nix packs username",
+	NixPacksPasswordKey:        "nix packs password",
+	OrganizationIdFromJob:      "org id from job",
+	// 83–95 belonged to the removed automations feature; stored job documents may
+	// still contain them — never reuse these numbers.
+	IsSpa:                      "is spa",
+	StartTime:                  "start time",
+	EndTime:                    "end time",
+	SearchPattern:              "search pattern",
+	JobOutput:                  "job output",
+	DebugGetDeploymentLogs:     "debug get deployment logs",
+	TaskID:                     "task id",
+	StepIndex:                  "step index",
+	TaskBranchName:             "task branch name",
+	Repositories:               "repositories",
+	TaskTitle:                  "task title",
+	DashboardURL:               "dashboard url",
+	AgentEnvVars:               "agent env vars",
+	StepPrompt:                 "step prompt",
+	PreviousStepsSummary:       "previous steps summary",
+	Model:                      "model",
+	MaxTurns:                   "max turns",
+	TokenBudget:                "token budget",
+	AgentboxImage:              "agentbox image",
+	AgentType:                  "agent type",
+	AdditionalAllowedHosts:     "additional allowed hosts",
+	ClaudeCodeVersion:          "claude code version",
+	CodexVersion:               "codex version",
+	SessionUUID:                "session uuid",
+	AgentProvider:              "agent provider",
+	TaskAdditionalAllowedHosts: "task additional allowed hosts",
+	ReviewParticipation:        "review participation",
+	ReviewMustFixThresholds:    "review must fix thresholds",
+	ReviewSpec:                 "review spec",
+	ReviewAgentType:            "review agent type",
+	ReviewModel:                "review model",
+	ReviewAgentEnvVars:         "review agent env vars",
+	ReviewAgentProvider:        "review agent provider",
+	ReviewFixThresholds:        "review fix thresholds",
+	RestartOnly:                "restart only",
+	ReviewShadowEffort:         "review shadow effort",
+	RefreshInfraContext:        "refresh infra context",
+	RefreshRepoCatalog:         "refresh repo catalog",
+	ReviewLevel:                "review level",
+	QAModel:                    "qa model",
+	QAAgentType:                "qa agent type",
+	QAAgentEnvVars:             "qa agent env vars",
+	QAAgentProvider:            "qa agent provider",
+	VerifyBrowserImage:         "verify browser image",
+	ProductionQATargets:        "production qa targets",
+	PreDeployCommand:           "pre deploy command",
 }
 
 func (k Key) String() string {
@@ -457,100 +435,89 @@ var keyMap = map[Key]string{
 	TaskDefinitionArn:          "45",
 	InstallationId:             "46",
 	//CpuArchitecture:         "47",
-	ResponseHeaders:              "48", //[][]string/primitive.A
-	Domains:                      "49", //[]string/primitive.A
-	RedirectDomain:               "50", //[]string/primitive.A - 0th element is from and 1st element is to
-	AcmCertificateArn:            "51",
-	CertificateRegion:            "52",
-	CertificateDomain:            "53",
-	CertificateID:                "54",
-	ParentDomain:                 "55",
-	CreateMultipleNats:           "56",
-	ErrorPages:                   "57", //[][]string/primitive.A
-	PreviewID:                    "58",
-	IsPreview:                    "59",
-	EcsClusterName:               "60",
-	ShouldSendChatOutput:         "61",
-	JobID:                        "62",
-	SecretName:                   "63",
-	SecretValue:                  "64",
-	IsPrivateRegistry:            "65",
-	DeployedFromImage:            "66",
-	IsPrivateService:             "67",
-	DeploymentName:               "68",
-	EnvironmentName:              "69",
-	RdsEngine:                    "70",
-	CpuMemoryRDSInstance:         "71",
-	AllocatedStorage:             "72",
-	MaxAllocatedStorage:          "73",
-	UseMultiAz:                   "74",
-	UseDeletionProtection:        "75",
-	ApplyRdsChangesImmediately:   "76",
-	ShouldUpdatePassword:         "77",
-	DockerFilePath:               "78",
-	StartCommand:                 "79",
-	NixPacksUsernameKey:          "80",
-	NixPacksPasswordKey:          "81",
-	OrganizationIdFromJob:        "82",
-	AutomationData:               "83",
-	AutomationID:                 "84",
-	SmtpUsername:                 "85",
-	SmtpPassword:                 "86",
-	SmtpHost:                     "87",
-	SmtpPort:                     "88",
-	EmailToolFromAddress:         "89",
-	DebugAutomation:              "90",
-	DebugOpenAICallsInAutomation: "91",
-	AgentData:                    "92",
-	AgentID:                      "93",
-	DebugAgent:                   "94",
-	DebugOpenAICallsInAgent:      "95",
-	IsSpa:                        "96",
-	StartTime:                    "97",
-	EndTime:                      "98",
-	SearchPattern:                "99",
-	JobOutput:                    "100",
-	DebugGetDeploymentLogs:       "101",
-	TaskID:                       "102",
-	StepIndex:                    "103",
-	TaskBranchName:               "104",
-	Repositories:                 "105",
-	TaskTitle:                    "106",
-	DashboardURL:                 "107",
-	AgentEnvVars:                 "108",
-	StepPrompt:                   "109",
-	PreviousStepsSummary:         "110",
-	Model:                        "111",
-	MaxTurns:                     "112",
-	TokenBudget:                  "113",
-	AgentboxImage:                "114",
-	AgentType:                    "115",
-	AdditionalAllowedHosts:       "116",
-	ClaudeCodeVersion:            "117",
-	CodexVersion:                 "118",
-	SessionUUID:                  "119",
-	AgentProvider:                "120",
-	TaskAdditionalAllowedHosts:   "121",
-	ReviewParticipation:          "122",
-	ReviewMustFixThresholds:      "123",
-	ReviewSpec:                   "124",
-	ReviewAgentType:              "125",
-	ReviewModel:                  "126",
-	ReviewAgentEnvVars:           "127",
-	ReviewAgentProvider:          "128",
-	ReviewFixThresholds:          "129",
-	RestartOnly:                  "130",
-	ReviewShadowEffort:           "131",
-	RefreshInfraContext:          "132",
-	RefreshRepoCatalog:           "133",
-	ReviewLevel:                  "134",
-	QAModel:                      "135",
-	QAAgentType:                  "136",
-	QAAgentEnvVars:               "137",
-	QAAgentProvider:              "138",
-	VerifyBrowserImage:           "139",
-	ProductionQATargets:          "140",
-	PreDeployCommand:             "141",
+	ResponseHeaders:            "48", //[][]string/primitive.A
+	Domains:                    "49", //[]string/primitive.A
+	RedirectDomain:             "50", //[]string/primitive.A - 0th element is from and 1st element is to
+	AcmCertificateArn:          "51",
+	CertificateRegion:          "52",
+	CertificateDomain:          "53",
+	CertificateID:              "54",
+	ParentDomain:               "55",
+	CreateMultipleNats:         "56",
+	ErrorPages:                 "57", //[][]string/primitive.A
+	PreviewID:                  "58",
+	IsPreview:                  "59",
+	EcsClusterName:             "60",
+	ShouldSendChatOutput:       "61",
+	JobID:                      "62",
+	SecretName:                 "63",
+	SecretValue:                "64",
+	IsPrivateRegistry:          "65",
+	DeployedFromImage:          "66",
+	IsPrivateService:           "67",
+	DeploymentName:             "68",
+	EnvironmentName:            "69",
+	RdsEngine:                  "70",
+	CpuMemoryRDSInstance:       "71",
+	AllocatedStorage:           "72",
+	MaxAllocatedStorage:        "73",
+	UseMultiAz:                 "74",
+	UseDeletionProtection:      "75",
+	ApplyRdsChangesImmediately: "76",
+	ShouldUpdatePassword:       "77",
+	DockerFilePath:             "78",
+	StartCommand:               "79",
+	NixPacksUsernameKey:        "80",
+	NixPacksPasswordKey:        "81",
+	OrganizationIdFromJob:      "82",
+	// 83–95 belonged to the removed automations feature; stored job documents may
+	// still contain them — never reuse these numbers.
+	IsSpa:                      "96",
+	StartTime:                  "97",
+	EndTime:                    "98",
+	SearchPattern:              "99",
+	JobOutput:                  "100",
+	DebugGetDeploymentLogs:     "101",
+	TaskID:                     "102",
+	StepIndex:                  "103",
+	TaskBranchName:             "104",
+	Repositories:               "105",
+	TaskTitle:                  "106",
+	DashboardURL:               "107",
+	AgentEnvVars:               "108",
+	StepPrompt:                 "109",
+	PreviousStepsSummary:       "110",
+	Model:                      "111",
+	MaxTurns:                   "112",
+	TokenBudget:                "113",
+	AgentboxImage:              "114",
+	AgentType:                  "115",
+	AdditionalAllowedHosts:     "116",
+	ClaudeCodeVersion:          "117",
+	CodexVersion:               "118",
+	SessionUUID:                "119",
+	AgentProvider:              "120",
+	TaskAdditionalAllowedHosts: "121",
+	ReviewParticipation:        "122",
+	ReviewMustFixThresholds:    "123",
+	ReviewSpec:                 "124",
+	ReviewAgentType:            "125",
+	ReviewModel:                "126",
+	ReviewAgentEnvVars:         "127",
+	ReviewAgentProvider:        "128",
+	ReviewFixThresholds:        "129",
+	RestartOnly:                "130",
+	ReviewShadowEffort:         "131",
+	RefreshInfraContext:        "132",
+	RefreshRepoCatalog:         "133",
+	ReviewLevel:                "134",
+	QAModel:                    "135",
+	QAAgentType:                "136",
+	QAAgentEnvVars:             "137",
+	QAAgentProvider:            "138",
+	VerifyBrowserImage:         "139",
+	ProductionQATargets:        "140",
+	PreDeployCommand:           "141",
 }
 
 func (k Key) Key() (string, error) {
