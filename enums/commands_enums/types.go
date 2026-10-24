@@ -26,15 +26,18 @@ const (
 	DeployAwsRdsDatabase                     Type = 21
 	DeleteAwsRdsDatabase                     Type = 22
 	BuildNixPacksImage                       Type = 23
-	RunNewAutomation                         Type = 24
-	RunNewAgent                              Type = 25
-	GetDeploymentLogsAws                     Type = 26
-	RunAgentStep                             Type = 27
-	CommitAndPush                            Type = 28
-	OpenPullRequest                          Type = 29
-	RunAssistantSession                      Type = 30
-	BuildInfraContext                        Type = 31
-	MaterializeContext                       Type = 32
+	// Deprecated: RunNewAutomation and RunNewAgent belonged to the removed
+	// automations feature. Nothing creates or runs these commands any more; the
+	// constants stay (never renumber or reuse) because old job documents store them.
+	RunNewAutomation     Type = 24
+	RunNewAgent          Type = 25
+	GetDeploymentLogsAws Type = 26
+	RunAgentStep         Type = 27
+	CommitAndPush        Type = 28
+	OpenPullRequest      Type = 29
+	RunAssistantSession  Type = 30
+	BuildInfraContext    Type = 31
+	MaterializeContext   Type = 32
 	// RunReviewStage sits between RunAgentStep and CommitAndPush in a Task
 	// Step Job: it reviews the diff the implementer produced against the
 	// Task's spec and routes must-fix findings back to the implementer

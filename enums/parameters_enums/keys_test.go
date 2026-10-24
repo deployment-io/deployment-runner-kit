@@ -110,3 +110,21 @@ func TestContextRefreshKeys(t *testing.T) {
 		}
 	}
 }
+
+// Keys 83–95 belonged to the removed automations feature and stored job
+// documents may still contain them. A key reusing one of those numbers would
+// read a stale automation value back as its own, so they stay retired.
+func TestRetiredAutomationKeysAreNotReused(t *testing.T) {
+	retired := map[string]bool{}
+	for n := 83; n <= 95; n++ {
+		retired[strconv.Itoa(n)] = true
+	}
+	for k, s := range keyMap {
+		if k >= 83 && k <= 95 {
+			t.Errorf("%s = %d reuses a retired automations key number (83–95)", k.String(), k)
+		}
+		if retired[s] {
+			t.Errorf("%s maps to %q, a retired automations key (83–95)", k.String(), s)
+		}
+	}
+}
