@@ -35,6 +35,11 @@ func TestWebServicePreviewSettingsReplyGobRoundTrip(t *testing.T) {
 			HealthCheckPath:  "/healthz",
 			Cpu:              "256",
 			Memory:           "512",
+			VariableNames:    []string{"API_KEY", "DATABASE_URL"},
+			PreviewDatabase: &PreviewDatabaseV1{
+				Mode: PreviewDatabaseModeUse, Engine: PreviewDatabaseEnginePostgres, Version: "16",
+				Variables: []string{"DATABASE_URL"},
+			},
 		}},
 		RuntimeBuiltServices: []string{"worker"},
 		ConfigurationSet:     true,
