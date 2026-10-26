@@ -65,7 +65,10 @@ type WebServicePreviewSettingsV1 struct {
 	StartCommand     string
 	PreDeployCommand string
 	// DockerFilePath is "Dockerfile" when unset, as the production build defaults it.
-	DockerFilePath  string
+	DockerFilePath string
+	// DockerBuildArgs are the NAMES of the production build args ("NAME", the
+	// part before the first "="), never their values: the runner reads only the
+	// names, so production build-arg values don't leave deployment-server.
 	DockerBuildArgs []string
 	Port            int64
 	// HealthCheckPath is "/" when unset, as production defaults it.
