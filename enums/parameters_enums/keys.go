@@ -244,6 +244,12 @@ const (
 	// new code deploys (a build of a commit) — never on Restart or Rollback.
 	// Absent means no pre-deploy command.
 	PreDeployCommand Key = 141 //string
+	// TaskSecurityGroupIds are the security groups a Task's backend preview runs
+	// in (the service and its pre-deploy one-off task). When set, the ECS network
+	// configuration uses exactly these groups instead of the VPC's default one,
+	// and an existing service is moved onto them. Set only by the runner for a
+	// Task's preview stack — never for production deploys.
+	TaskSecurityGroupIds Key = 142 //primitive.A of strings - security group ids
 )
 
 var keyToString = map[Key]string{
@@ -377,6 +383,7 @@ var keyToString = map[Key]string{
 	VerifyBrowserImage:         "verify browser image",
 	ProductionQATargets:        "production qa targets",
 	PreDeployCommand:           "pre deploy command",
+	TaskSecurityGroupIds:       "task security group ids",
 }
 
 func (k Key) String() string {
@@ -518,6 +525,7 @@ var keyMap = map[Key]string{
 	VerifyBrowserImage:         "139",
 	ProductionQATargets:        "140",
 	PreDeployCommand:           "141",
+	TaskSecurityGroupIds:       "142",
 }
 
 func (k Key) Key() (string, error) {

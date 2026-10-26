@@ -72,6 +72,21 @@ type WebServicePreviewSettingsV1 struct {
 	HealthCheckPath string
 	Cpu             string
 	Memory          string
+
+	// VariableNames are the NAMES, sorted, of the variables the production
+	// deployment runs with: its environment's variables and those its dotenv
+	// secret files define. Never a value. The runner uses them to choose between
+	// several database address variables the code reads.
+	VariableNames []string
+	// PreviewDatabase is the person's choice of a preview database for this
+	// service. Nil means automatic (detected from the Task's code).
+	PreviewDatabase *PreviewDatabaseV1
+	// PreviewMigrateCommand is the command a person set for this service's
+	// previews to run against the preview's own database before the API starts
+	// (its migrations). "" means a preview runs no migrations: the production
+	// PreDeployCommand never runs in a preview, since it is production
+	// configuration and can name a production database or carry credentials.
+	PreviewMigrateCommand string
 }
 
 // WebServicePreviewNetworkV1 is the network a production web-service deploy reads:

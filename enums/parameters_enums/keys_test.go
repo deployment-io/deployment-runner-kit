@@ -97,6 +97,7 @@ func TestContextRefreshKeys(t *testing.T) {
 		{VerifyBrowserImage, 139, "verify browser image", "139"},
 		{ProductionQATargets, 140, "production qa targets", "140"},
 		{PreDeployCommand, 141, "pre deploy command", "141"},
+		{TaskSecurityGroupIds, 142, "task security group ids", "142"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
