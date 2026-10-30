@@ -250,10 +250,10 @@ const (
 	// and an existing service is moved onto them. Set only by the runner for a
 	// Task's preview stack — never for production deploys.
 	TaskSecurityGroupIds Key = 142 //primitive.A of strings - security group ids
-	// NamespaceNames are the Cloud Map namespace names an environment's
+	// CloudMapNamespaceNames are the Cloud Map namespace names an environment's
 	// deployments recorded (deleted deployments included), stamped AT JOB
-	// CREATION of a Delete environment namespaces Job. (143 is reserved.)
-	NamespaceNames Key = 144 //primitive.A of strings - namespace names
+	// CREATION of a Delete environment Cloud Map namespaces Job. (143 is reserved.)
+	CloudMapNamespaceNames Key = 144 //primitive.A of strings - namespace names
 )
 
 var keyToString = map[Key]string{
@@ -388,7 +388,7 @@ var keyToString = map[Key]string{
 	ProductionQATargets:        "production qa targets",
 	PreDeployCommand:           "pre deploy command",
 	TaskSecurityGroupIds:       "task security group ids",
-	NamespaceNames:             "namespace names",
+	CloudMapNamespaceNames:     "cloud map namespace names",
 }
 
 func (k Key) String() string {
@@ -531,7 +531,7 @@ var keyMap = map[Key]string{
 	ProductionQATargets:        "140",
 	PreDeployCommand:           "141",
 	TaskSecurityGroupIds:       "142",
-	NamespaceNames:             "144",
+	CloudMapNamespaceNames:     "144",
 }
 
 func (k Key) Key() (string, error) {

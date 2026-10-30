@@ -23,12 +23,12 @@ func TestRunProductionQA(t *testing.T) {
 	}
 }
 
-func TestDeleteAwsNamespaces(t *testing.T) {
-	if DeleteAwsNamespaces != 36 {
-		t.Errorf("DeleteAwsNamespaces = %d; want 36", DeleteAwsNamespaces)
+func TestDeleteAwsCloudMapNamespaces(t *testing.T) {
+	if DeleteAwsCloudMapNamespaces != 36 {
+		t.Errorf("DeleteAwsCloudMapNamespaces = %d; want 36", DeleteAwsCloudMapNamespaces)
 	}
-	if got := DeleteAwsNamespaces.String(); got != "Delete AWS Namespaces" {
-		t.Errorf("DeleteAwsNamespaces.String() = %q; want %q", got, "Delete AWS Namespaces")
+	if got := DeleteAwsCloudMapNamespaces.String(); got != "Delete AWS Cloud Map Namespaces" {
+		t.Errorf("DeleteAwsCloudMapNamespaces.String() = %q; want %q", got, "Delete AWS Cloud Map Namespaces")
 	}
 }
 
