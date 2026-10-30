@@ -56,6 +56,11 @@ const (
 	// repositories' production URLs, with a read-only browser. It has no
 	// checkout, no Step and no fix round.
 	RunProductionQA Type = 35
+	// DeleteAwsCloudMapNamespaces is the only command of a Delete environment
+	// namespaces Job, sent to an environment's runner when the environment is
+	// deleted: it deletes the environment's Cloud Map private DNS namespaces
+	// that no service uses any more.
+	DeleteAwsCloudMapNamespaces Type = 36
 )
 
 var typeToString = map[Type]string{
@@ -94,6 +99,7 @@ var typeToString = map[Type]string{
 	RunReviewStage:                           "Run Review Stage",
 	RunQAStage:                               "Run QA Stage",
 	RunProductionQA:                          "Run Production QA",
+	DeleteAwsCloudMapNamespaces:              "Delete AWS Cloud Map Namespaces",
 }
 
 func (t Type) String() string {
