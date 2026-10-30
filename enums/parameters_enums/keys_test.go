@@ -98,6 +98,7 @@ func TestContextRefreshKeys(t *testing.T) {
 		{ProductionQATargets, 140, "production qa targets", "140"},
 		{PreDeployCommand, 141, "pre deploy command", "141"},
 		{TaskSecurityGroupIds, 142, "task security group ids", "142"},
+		{NamespaceNames, 144, "namespace names", "144"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
