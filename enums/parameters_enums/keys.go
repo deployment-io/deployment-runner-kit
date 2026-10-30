@@ -250,9 +250,10 @@ const (
 	// and an existing service is moved onto them. Set only by the runner for a
 	// Task's preview stack — never for production deploys.
 	TaskSecurityGroupIds Key = 142 //primitive.A of strings - security group ids
+	BuildSecrets         Key = 143 //map[string]string - decrypted build secrets (name → value) for the Job's docker build. Injected by deployment-server at Job pickup; never persisted back to MongoDB.
 	// CloudMapNamespaceNames are the Cloud Map namespace names an environment's
 	// deployments recorded (deleted deployments included), stamped AT JOB
-	// CREATION of a Delete environment Cloud Map namespaces Job. (143 is reserved.)
+	// CREATION of a Delete environment Cloud Map namespaces Job.
 	CloudMapNamespaceNames Key = 144 //primitive.A of strings - namespace names
 )
 
@@ -388,6 +389,7 @@ var keyToString = map[Key]string{
 	ProductionQATargets:        "production qa targets",
 	PreDeployCommand:           "pre deploy command",
 	TaskSecurityGroupIds:       "task security group ids",
+	BuildSecrets:               "build secrets",
 	CloudMapNamespaceNames:     "cloud map namespace names",
 }
 
@@ -531,6 +533,7 @@ var keyMap = map[Key]string{
 	ProductionQATargets:        "140",
 	PreDeployCommand:           "141",
 	TaskSecurityGroupIds:       "142",
+	BuildSecrets:               "143",
 	CloudMapNamespaceNames:     "144",
 }
 
