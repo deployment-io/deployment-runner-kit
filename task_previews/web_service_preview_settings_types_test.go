@@ -25,6 +25,7 @@ func TestWebServicePreviewSettingsReplyGobRoundTrip(t *testing.T) {
 		Services: []WebServicePreviewSettingsV1{{
 			DeploymentName:   "api",
 			EnvironmentName:  "production",
+			Branch:           "main",
 			Region:           "us-east-1",
 			RootDirectory:    "services/api",
 			StartCommand:     "./server",
@@ -42,6 +43,7 @@ func TestWebServicePreviewSettingsReplyGobRoundTrip(t *testing.T) {
 			},
 			PreviewMigrateCommand: "./migrate-preview",
 			BuildSecrets:          map[string]string{"NPM_TOKEN": "npm-secret"},
+			ProductionEnvironment: true,
 		}},
 		RuntimeBuiltServices: []string{"worker"},
 		ConfigurationSet:     true,
@@ -91,6 +93,58 @@ func TestWebServicePreviewSettingsBuildSecretsIgnoredByOlderRunner(t *testing.T)
 	}
 	if !reflect.DeepEqual(out, want) {
 		t.Errorf("got %+v\nwant %+v", out, want)
+	}
+}
+
+func TestStaticSiteBuildSettingsReplyGobRoundTrip(t *testing.T) {
+	in := StaticSiteBuildSettingsReplyV1{
+		Sites: []StaticSiteBuildSettingsV1{{
+			DeploymentName:        "web",
+			EnvironmentName:       "production",
+			Branch:                "main",
+			ProductionEnvironment: true,
+			RootDirectory:         "apps/web",
+			BuildCommand:          "npm run build",
+			PublishDirectory:      "dist",
+			IsSpa:                 true,
+		}},
+		ConfigurationSet: true,
+		Variables:        map[string]string{"API_KEY": "secret"},
+		Files:            []PreviewFileV1{{Name: ".env", Contents: "A=b"}},
+	}
+	var out StaticSiteBuildSettingsReplyV1
+	gobRoundTrip(t, in, &out)
+	if !reflect.DeepEqual(in, out) {
+		t.Errorf("got %+v\nwant %+v", out, in)
+	}
+}
+
+// A runner built before Branch and ProductionEnvironment decodes replies carrying
+// them: gob skips the fields.
+func TestBranchAndProductionEnvironmentIgnoredByOlderRunner(t *testing.T) {
+	type olderService struct {
+		DeploymentName  string
+		EnvironmentName string
+		RootDirectory   string
+	}
+	type olderWebReply struct{ Services []olderService }
+	type olderStaticReply struct{ Sites []olderService }
+
+	var web olderWebReply
+	gobRoundTrip(t, WebServicePreviewSettingsReplyV1{Services: []WebServicePreviewSettingsV1{{
+		DeploymentName: "api", EnvironmentName: "production", Branch: "main", ProductionEnvironment: true, RootDirectory: "api",
+	}}}, &web)
+	want := []olderService{{DeploymentName: "api", EnvironmentName: "production", RootDirectory: "api"}}
+	if !reflect.DeepEqual(web.Services, want) {
+		t.Errorf("web services: got %+v\nwant %+v", web.Services, want)
+	}
+
+	var static olderStaticReply
+	gobRoundTrip(t, StaticSiteBuildSettingsReplyV1{Sites: []StaticSiteBuildSettingsV1{{
+		DeploymentName: "api", EnvironmentName: "production", Branch: "main", ProductionEnvironment: true, RootDirectory: "api",
+	}}}, &static)
+	if !reflect.DeepEqual(static.Sites, want) {
+		t.Errorf("static sites: got %+v\nwant %+v", static.Sites, want)
 	}
 }
 
