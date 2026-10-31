@@ -57,6 +57,17 @@ type WebServicePreviewSettingsReplyV1 struct {
 type WebServicePreviewSettingsV1 struct {
 	DeploymentName  string
 	EnvironmentName string
+	// Branch is the branch the deployment deploys (its repository branch), ""
+	// when unknown.
+	Branch string
+	// ProductionEnvironment is true when the deployment's environment is a
+	// permanent, not deleted (or being deleted) environment classified
+	// Production. With Branch, it lets the runner choose between several
+	// services of the same repository and root directory (Staging and
+	// Production): the one deploying the Task's base branch, in Production. A
+	// runner built before these fields ignores them (gob skips fields its
+	// struct lacks); an older deployment-server leaves them "" and false.
+	ProductionEnvironment bool
 	// Region is the deployment's region, a region_enums string e.g. "us-east-1".
 	Region string
 	// RootDirectory is the directory of the repository the build runs in ("" for
