@@ -40,6 +40,8 @@ func TestWebServicePreviewSettingsReplyGobRoundTrip(t *testing.T) {
 				Mode: PreviewDatabaseModeUse, Engine: PreviewDatabaseEnginePostgres, Version: "16",
 				Variables: []string{"DATABASE_URL"},
 			},
+			PreviewMigrateCommand: "./migrate-preview",
+			BuildSecrets:          map[string]string{"NPM_TOKEN": "npm-secret"},
 		}},
 		RuntimeBuiltServices: []string{"worker"},
 		ConfigurationSet:     true,
@@ -60,6 +62,35 @@ func TestWebServicePreviewSettingsReplyGobRoundTrip(t *testing.T) {
 	gobRoundTrip(t, in, &out)
 	if !reflect.DeepEqual(in, out) {
 		t.Errorf("got %+v\nwant %+v", out, in)
+	}
+}
+
+// A runner built before BuildSecrets decodes a reply carrying them: gob skips the field.
+func TestWebServicePreviewSettingsBuildSecretsIgnoredByOlderRunner(t *testing.T) {
+	type olderWebServicePreviewSettingsV1 struct {
+		DeploymentName        string
+		PreviewMigrateCommand string
+	}
+	type olderReply struct {
+		Services      []olderWebServicePreviewSettingsV1
+		NamespaceName string
+	}
+	in := WebServicePreviewSettingsReplyV1{
+		Services: []WebServicePreviewSettingsV1{{
+			DeploymentName:        "api",
+			PreviewMigrateCommand: "./migrate-preview",
+			BuildSecrets:          map[string]string{"NPM_TOKEN": "npm-secret"},
+		}},
+		NamespaceName: "previews-a1b2",
+	}
+	var out olderReply
+	gobRoundTrip(t, in, &out)
+	want := olderReply{
+		Services:      []olderWebServicePreviewSettingsV1{{DeploymentName: "api", PreviewMigrateCommand: "./migrate-preview"}},
+		NamespaceName: "previews-a1b2",
+	}
+	if !reflect.DeepEqual(out, want) {
+		t.Errorf("got %+v\nwant %+v", out, want)
 	}
 }
 
