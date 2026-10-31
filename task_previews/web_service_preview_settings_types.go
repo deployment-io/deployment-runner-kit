@@ -90,6 +90,12 @@ type WebServicePreviewSettingsV1 struct {
 	// PreDeployCommand never runs in a preview, since it is production
 	// configuration and can name a production database or carry credentials.
 	PreviewMigrateCommand string
+	// BuildSecrets are this service's preview build secrets, decrypted: name →
+	// value, nil when it has none. Never production's build secrets. They are for
+	// this service's backend preview build only, and stay runner-side: never in an
+	// agent's tool result, a log or the Step log. A runner built before this field
+	// ignores it (gob skips fields its struct lacks).
+	BuildSecrets map[string]string
 }
 
 // WebServicePreviewNetworkV1 is the network a production web-service deploy reads:
