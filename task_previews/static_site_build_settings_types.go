@@ -34,6 +34,17 @@ type StaticSiteBuildSettingsReplyV1 struct {
 type StaticSiteBuildSettingsV1 struct {
 	DeploymentName  string
 	EnvironmentName string
+	// Branch is the branch the deployment deploys (its repository branch), ""
+	// when unknown.
+	Branch string
+	// ProductionEnvironment is true when the deployment's environment is a
+	// permanent, not deleted (or being deleted) environment classified
+	// Production. With Branch, it lets the runner choose between several sites
+	// of the same repository and root directory that build differently: the one
+	// deploying the Task's base branch, in Production. A runner built before
+	// these fields ignores them (gob skips fields its struct lacks); an older
+	// deployment-server leaves them "" and false.
+	ProductionEnvironment bool
 	// RootDirectory is the directory of the repository the build runs in ("" for
 	// the repository root).
 	RootDirectory string
