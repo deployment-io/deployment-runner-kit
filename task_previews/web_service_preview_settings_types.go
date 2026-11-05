@@ -101,12 +101,31 @@ type WebServicePreviewSettingsV1 struct {
 	// PreDeployCommand never runs in a preview, since it is production
 	// configuration and can name a production database or carry credentials.
 	PreviewMigrateCommand string
+	// PreviewSeedCommand is the command a person set for this service's
+	// previews to run against the preview's own database after
+	// PreviewMigrateCommand, on every preview deploy: it creates a user for each
+	// of PreviewRoles. "" means the preview runs no seed command. A runner built
+	// before this field ignores it (gob skips fields its struct lacks).
+	PreviewSeedCommand string
+	// PreviewRoles are the test roles a person set for this service's previews:
+	// the seed command creates a user for each, with an email and password
+	// generated for the preview. Nil when there are none. A runner built before
+	// this field ignores it (gob skips fields its struct lacks).
+	PreviewRoles []PreviewRoleV1
 	// BuildSecrets are this service's preview build secrets, decrypted: name →
 	// value, nil when it has none. Never production's build secrets. They are for
 	// this service's backend preview build only, and stay runner-side: never in an
 	// agent's tool result, a log or the Step log. A runner built before this field
 	// ignores it (gob skips fields its struct lacks).
 	BuildSecrets map[string]string
+}
+
+// PreviewRoleV1 is a test role of a web service's previews. Name is lower case
+// (letters, digits, - and _); Description says what the user can do, "" when
+// unset.
+type PreviewRoleV1 struct {
+	Name        string
+	Description string
 }
 
 // WebServicePreviewNetworkV1 is the network a production web-service deploy reads:
