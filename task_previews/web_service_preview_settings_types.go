@@ -112,6 +112,11 @@ type WebServicePreviewSettingsV1 struct {
 	// generated for the preview. Nil when there are none. A runner built before
 	// this field ignores it (gob skips fields its struct lacks).
 	PreviewRoles []PreviewRoleV1
+	// PreviewSignIn is the sign-in request a person set for this service's
+	// previews: how QA signs in as one of PreviewRoles with the email and
+	// password generated for it. Nil when the service has none. A runner built
+	// before this field ignores it (gob skips fields its struct lacks).
+	PreviewSignIn *PreviewSignInV1
 	// BuildSecrets are this service's preview build secrets, decrypted: name →
 	// value, nil when it has none. Never production's build secrets. They are for
 	// this service's backend preview build only, and stay runner-side: never in an
@@ -126,6 +131,27 @@ type WebServicePreviewSettingsV1 struct {
 type PreviewRoleV1 struct {
 	Name        string
 	Description string
+}
+
+// PreviewSignInV1 is how a web service's preview signs in a test user: a POST
+// to Path with the user's email and password, answered with a session.
+type PreviewSignInV1 struct {
+	// Path is the path the app signs in at: starts with /, no ? or #.
+	Path string
+	// BodyFormat is "json" or "form". With "json", a "." in a field name nests
+	// objects (user.email → {"user": {"email": …}}); with "form" the names are
+	// used as they are (user[email] stays user[email]).
+	BodyFormat string
+	// EmailField is the name of the body field holding the email.
+	EmailField string
+	// PasswordField is the name of the body field holding the password.
+	PasswordField string
+	// Session is how the app answers with the session: "cookie" (its cookies)
+	// or "bearer" (a token in a field of its JSON body).
+	Session string
+	// TokenField is the dot path into the JSON body that holds the token, e.g.
+	// token or data.access_token. Set only with "bearer"; "" with "cookie".
+	TokenField string
 }
 
 // WebServicePreviewNetworkV1 is the network a production web-service deploy reads:
