@@ -117,6 +117,12 @@ type WebServicePreviewSettingsV1 struct {
 	// password generated for it. Nil when the service has none. A runner built
 	// before this field ignores it (gob skips fields its struct lacks).
 	PreviewSignIn *PreviewSignInV1
+	// PreviewBrowserSignInPath is the path of the page where a person signs in
+	// with an email and password, e.g. /signin, on the site QA's browser checks.
+	// "" when unset: QA's browser doesn't sign in as this service's roles. A
+	// runner built before this field ignores it (gob skips fields its struct
+	// lacks).
+	PreviewBrowserSignInPath string
 	// BuildSecrets are this service's preview build secrets, decrypted: name →
 	// value, nil when it has none. Never production's build secrets. They are for
 	// this service's backend preview build only, and stay runner-side: never in an
