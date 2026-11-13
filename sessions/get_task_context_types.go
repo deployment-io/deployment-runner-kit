@@ -30,6 +30,13 @@ type TaskContextV1 struct {
 	// SpecJSON is the Task's structured spec as JSON; "" when it has none.
 	SpecJSON     string
 	Repositories []TaskRepositoryContextV1
+	// Terminus is where the Task ends: "Pull request" or "Deployed". A Task
+	// stored without one reads as "Pull request"; "" from an older
+	// deployment-server.
+	Terminus string
+	// ProductionQA is the QA run on production after every repository of a
+	// Deployed Task deployed; nil when the Task has none.
+	ProductionQA *TaskProductionQAContextV1
 }
 
 // TaskRepositoryContextV1 is one of the Task's repositories.
@@ -42,6 +49,51 @@ type TaskRepositoryContextV1 struct {
 	CheckedOutBranch string
 	PRURL            string
 	PRState          string
+	// DeployTargetName and DeployEnvironmentName are the deployment and
+	// environment the merged change deploys to, and DeployTargetType its type
+	// ("Static Site", "Web Service" or "Private Service"); all "" when the
+	// repository has no deploy target (a Task that ends at its pull request).
+	DeployTargetName      string
+	DeployEnvironmentName string
+	DeployTargetType      string
+	// MergedAt is when the pull request merged (unix seconds); 0 when it
+	// hasn't, or the provider didn't report it.
+	MergedAt int64
+	// Delivery is how the merged change went out; nil when it hasn't started.
+	Delivery *TaskDeliveryContextV1
+	// DeliveryLog is the delivery's deploy (Build) log, oldest line first; at
+	// most its newest 1 MiB. DeliveryLogTruncated is true when older lines
+	// were left out for that cap.
+	DeliveryLog          string
+	DeliveryLogTruncated bool
+}
+
+// TaskDeliveryContextV1 is how a repository's merged change was delivered to
+// its deploy target.
+type TaskDeliveryContextV1 struct {
+	State  string
+	Reason string
+	// CommitHash is the commit that went out.
+	CommitHash         string
+	MissingVariables   []string
+	FollowedAutoDeploy bool
+	StartedAt          int64
+	EndedAt            int64
+}
+
+// TaskProductionQAContextV1 is the verdict of the QA run on production.
+type TaskProductionQAContextV1 struct {
+	State      string
+	Reason     string
+	Passed     int
+	Failed     int
+	NotChecked int
+	NoCriteria bool
+	StartedAt  int64
+	EndedAt    int64
+	// Run is the production QA Job, in the same shape as a run (RerunFeedback
+	// empty); nil when it has none or it no longer exists.
+	Run *TaskRunContextV1
 }
 
 // TaskRunContextV1 is one agent run (Job) of the Task.
