@@ -7,10 +7,16 @@ import "github.com/deployment-io/deployment-runner-kit/types"
 // review DTOs it is a string because the runner cannot import kit's
 // qa_enums, and deployment-server parses it back and drops what does not
 // parse.
+//
+// EvidenceIDs are the hex ids UploadQAEvidenceV1 returned for the
+// screenshots cited for this criterion; empty for a runner that uploads
+// none. A gob-added field: an older deployment-server ignores it, and the
+// server keeps only ids stored for this Task and Job.
 type QACriterionDtoV1 struct {
-	Criterion string
-	State     string
-	Reason    string
+	Criterion   string
+	State       string
+	Reason      string
+	EvidenceIDs []string
 }
 
 // QAResultDtoV1 is one QA stage run as the runner reports it.
@@ -48,6 +54,36 @@ type UpdateTaskStepQAArgsV1 struct {
 
 type UpdateTaskStepQAReplyV1 struct {
 	Done bool
+}
+
+// UploadQAEvidenceDtoV1 carries one QA screenshot to deployment-server
+// (Jobs.UploadQAEvidenceV1), which stores it and replies its id for
+// QACriterionDtoV1.EvidenceIDs. One image per call.
+//
+// Image is a JPEG of at most 1 MiB (kit's qa_models.MaxEvidenceBytes); the
+// server checks both and refuses anything else. CheckID names the check
+// that took it ([a-z0-9_-], at most 16 characters); Criteria are indexes
+// into the round's criteria it is evidence for. Width and Height are the
+// image's pixel size.
+type UploadQAEvidenceDtoV1 struct {
+	TaskID    string
+	StepIndex int
+	JobID     string
+	Round     int
+	CheckID   string
+	Criteria  []int
+	Image     []byte
+	Width     int
+	Height    int
+}
+
+type UploadQAEvidenceArgsV1 struct {
+	types.AuthArgsV1
+	Upload UploadQAEvidenceDtoV1
+}
+
+type UploadQAEvidenceReplyV1 struct {
+	EvidenceID string
 }
 
 // The WIRE MIRROR of kit's qa_enums: the names the runner sends in
