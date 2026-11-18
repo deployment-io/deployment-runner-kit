@@ -255,6 +255,9 @@ const (
 	// deployments recorded (deleted deployments included), stamped AT JOB
 	// CREATION of a Delete environment Cloud Map namespaces Job.
 	CloudMapNamespaceNames Key = 144 //primitive.A of strings - namespace names
+	// ProductionWatchTargets is what a production watch Job watches, stamped
+	// AT JOB CREATION by app-server: one entry per deployed repository.
+	ProductionWatchTargets Key = 145 //string - JSON array of tasks.ProductionWatchTargetV1
 )
 
 var keyToString = map[Key]string{
@@ -391,6 +394,7 @@ var keyToString = map[Key]string{
 	TaskSecurityGroupIds:       "task security group ids",
 	BuildSecrets:               "build secrets",
 	CloudMapNamespaceNames:     "cloud map namespace names",
+	ProductionWatchTargets:     "production watch targets",
 }
 
 func (k Key) String() string {
@@ -535,6 +539,7 @@ var keyMap = map[Key]string{
 	TaskSecurityGroupIds:       "142",
 	BuildSecrets:               "143",
 	CloudMapNamespaceNames:     "144",
+	ProductionWatchTargets:     "145",
 }
 
 func (k Key) Key() (string, error) {

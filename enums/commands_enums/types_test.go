@@ -32,6 +32,15 @@ func TestDeleteAwsCloudMapNamespaces(t *testing.T) {
 	}
 }
 
+func TestRunProductionWatch(t *testing.T) {
+	if RunProductionWatch != 37 {
+		t.Errorf("RunProductionWatch = %d; want 37", RunProductionWatch)
+	}
+	if got := RunProductionWatch.String(); got != "Run Production Watch" {
+		t.Errorf("RunProductionWatch.String() = %q; want %q", got, "Run Production Watch")
+	}
+}
+
 // RunNewAutomation and RunNewAgent are deprecated (the automations feature is
 // gone) but old job documents still store them, so their values must not move.
 func TestDeprecatedAutomationCommandValues(t *testing.T) {
