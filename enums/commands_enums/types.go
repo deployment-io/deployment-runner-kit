@@ -61,6 +61,13 @@ const (
 	// deleted: it deletes the environment's Cloud Map private DNS namespaces
 	// that no service uses any more.
 	DeleteAwsCloudMapNamespaces Type = 36
+	// RunProductionWatch is the only command of a production watch Job: after
+	// a deployed Task's deploy, the runner of the deployments' environment
+	// watches production for tasks.ProductionWatchWindowSeconds (load
+	// balancer errors, unhealthy targets, crashed tasks, failing URLs) and
+	// reports each poll to deployment-server. It has no checkout, no Step and
+	// no container.
+	RunProductionWatch Type = 37
 )
 
 var typeToString = map[Type]string{
@@ -100,6 +107,7 @@ var typeToString = map[Type]string{
 	RunQAStage:                               "Run QA Stage",
 	RunProductionQA:                          "Run Production QA",
 	DeleteAwsCloudMapNamespaces:              "Delete AWS Cloud Map Namespaces",
+	RunProductionWatch:                       "Run Production Watch",
 }
 
 func (t Type) String() string {
