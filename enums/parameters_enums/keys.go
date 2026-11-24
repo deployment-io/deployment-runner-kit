@@ -258,6 +258,10 @@ const (
 	// ProductionWatchTargets are the deployed repositories a production watch
 	// Job watches, stamped AT JOB CREATION.
 	ProductionWatchTargets Key = 145 //string - JSON array of tasks.ProductionWatchTargetV1
+	// ProductionEvidence is which services and time windows of the deploy a
+	// fix Task fixes the runner reads production logs from, stamped AT JOB
+	// CREATION of a fix Task's Step Job.
+	ProductionEvidence Key = 146 //string - JSON of tasks.ProductionEvidenceV1
 )
 
 var keyToString = map[Key]string{
@@ -395,6 +399,7 @@ var keyToString = map[Key]string{
 	BuildSecrets:               "build secrets",
 	CloudMapNamespaceNames:     "cloud map namespace names",
 	ProductionWatchTargets:     "production watch targets",
+	ProductionEvidence:         "production evidence",
 }
 
 func (k Key) String() string {
@@ -540,6 +545,7 @@ var keyMap = map[Key]string{
 	BuildSecrets:               "143",
 	CloudMapNamespaceNames:     "144",
 	ProductionWatchTargets:     "145",
+	ProductionEvidence:         "146",
 }
 
 func (k Key) Key() (string, error) {

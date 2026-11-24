@@ -100,6 +100,7 @@ func TestContextRefreshKeys(t *testing.T) {
 		{TaskSecurityGroupIds, 142, "task security group ids", "142"},
 		{CloudMapNamespaceNames, 144, "cloud map namespace names", "144"},
 		{ProductionWatchTargets, 145, "production watch targets", "145"},
+		{ProductionEvidence, 146, "production evidence", "146"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
