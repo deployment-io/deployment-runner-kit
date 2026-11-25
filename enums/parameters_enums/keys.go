@@ -262,6 +262,9 @@ const (
 	// fix Task fixes the runner reads production logs from, stamped AT JOB
 	// CREATION of a fix Task's Step Job.
 	ProductionEvidence Key = 146 //string - JSON of tasks.ProductionEvidenceV1
+	// DependencyBumpRequest is which repository of the Task a dependency bump
+	// Job bumps, and to which merged libraries, stamped AT JOB CREATION.
+	DependencyBumpRequest Key = 147 //string - JSON of tasks.DependencyBumpRequestV1
 )
 
 var keyToString = map[Key]string{
@@ -400,6 +403,7 @@ var keyToString = map[Key]string{
 	CloudMapNamespaceNames:     "cloud map namespace names",
 	ProductionWatchTargets:     "production watch targets",
 	ProductionEvidence:         "production evidence",
+	DependencyBumpRequest:      "dependency bump request",
 }
 
 func (k Key) String() string {
@@ -546,6 +550,7 @@ var keyMap = map[Key]string{
 	CloudMapNamespaceNames:     "144",
 	ProductionWatchTargets:     "145",
 	ProductionEvidence:         "146",
+	DependencyBumpRequest:      "147",
 }
 
 func (k Key) Key() (string, error) {

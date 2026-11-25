@@ -41,6 +41,15 @@ func TestRunProductionWatch(t *testing.T) {
 	}
 }
 
+func TestRunDependencyBump(t *testing.T) {
+	if RunDependencyBump != 38 {
+		t.Errorf("RunDependencyBump = %d; want 38", RunDependencyBump)
+	}
+	if got := RunDependencyBump.String(); got != "Run Dependency Bump" {
+		t.Errorf("RunDependencyBump.String() = %q; want %q", got, "Run Dependency Bump")
+	}
+}
+
 // RunNewAutomation and RunNewAgent are deprecated (the automations feature is
 // gone) but old job documents still store them, so their values must not move.
 func TestDeprecatedAutomationCommandValues(t *testing.T) {
