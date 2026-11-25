@@ -68,6 +68,10 @@ const (
 	// reports each poll to deployment-server. It has no checkout, no Step and
 	// no container.
 	RunProductionWatch Type = 37
+	// RunDependencyBump is the only command of a dependency bump Job: the
+	// runner checks out a Task repository, bumps it to libraries the Task
+	// merged, and pushes the result, with no agent.
+	RunDependencyBump Type = 38
 )
 
 var typeToString = map[Type]string{
@@ -108,6 +112,7 @@ var typeToString = map[Type]string{
 	RunProductionQA:                          "Run Production QA",
 	DeleteAwsCloudMapNamespaces:              "Delete AWS Cloud Map Namespaces",
 	RunProductionWatch:                       "Run Production Watch",
+	RunDependencyBump:                        "Run Dependency Bump",
 }
 
 func (t Type) String() string {

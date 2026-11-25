@@ -101,6 +101,7 @@ func TestContextRefreshKeys(t *testing.T) {
 		{CloudMapNamespaceNames, 144, "cloud map namespace names", "144"},
 		{ProductionWatchTargets, 145, "production watch targets", "145"},
 		{ProductionEvidence, 146, "production evidence", "146"},
+		{DependencyBumpRequest, 147, "dependency bump request", "147"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
