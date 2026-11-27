@@ -102,6 +102,7 @@ func TestContextRefreshKeys(t *testing.T) {
 		{ProductionWatchTargets, 145, "production watch targets", "145"},
 		{ProductionEvidence, 146, "production evidence", "146"},
 		{DependencyBumpRequest, 147, "dependency bump request", "147"},
+		{StartUpBumpSources, 148, "start up bump sources", "148"},
 	}
 	for _, c := range cases {
 		if c.key != c.value {
