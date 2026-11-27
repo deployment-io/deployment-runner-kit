@@ -93,6 +93,57 @@ func TestDependencyBumpRequestJSON(t *testing.T) {
 	}
 }
 
+func TestStartUpBumpSourcesJSON(t *testing.T) {
+	in := []StartUpBumpSourceV1{{
+		TaskID:    "task-a",
+		TaskTitle: "Add a kit helper",
+		Repository: RepositoryEntry{
+			Name:           "deployment-io/kit",
+			CloneURL:       "https://github.com/deployment-io/kit.git",
+			BaseBranch:     "master",
+			Provider:       "github",
+			InstallationID: "42",
+		},
+		Commit:   strings.Repeat("c", 40),
+		Provides: []StartUpBumpProvidedV1{{Ecosystem: DependencyEcosystemGo, Name: "github.com/deployment-io/kit"}},
+	}}
+	data, err := json.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields []map[string]interface{}
+	if err := json.Unmarshal(data, &fields); err != nil {
+		t.Fatal(err)
+	}
+	if len(fields) != 1 {
+		t.Fatalf("sources = %s", data)
+	}
+	want := []string{"taskId", "taskTitle", "repository", "commit", "provides"}
+	if len(fields[0]) != len(want) {
+		t.Errorf("source fields = %v; want %v", fields[0], want)
+	}
+	for _, k := range want {
+		if _, ok := fields[0][k]; !ok {
+			t.Errorf("missing JSON field %q in %s", k, data)
+		}
+	}
+	provides, _ := fields[0]["provides"].([]interface{})
+	if len(provides) != 1 {
+		t.Fatalf("provides = %v", fields[0]["provides"])
+	}
+	provided, _ := provides[0].(map[string]interface{})
+	if len(provided) != 2 || provided["ecosystem"] != "go" || provided["name"] != "github.com/deployment-io/kit" {
+		t.Errorf("provided fields = %v; want ecosystem, name", provided)
+	}
+	var out []StartUpBumpSourceV1
+	if err := json.Unmarshal(data, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(in, out) {
+		t.Errorf("round trip: got %+v, want %+v", out, in)
+	}
+}
+
 func TestRecordTaskDependenciesArgsGob(t *testing.T) {
 	auth := types.AuthArgsV1{OrganizationID: "o", Token: "t"}
 	for _, in := range []RecordTaskDependenciesArgsV1{

@@ -81,6 +81,9 @@ const (
 	MaxTaskDependencies = 64
 	// MaxDependencyBumpsPerJob caps the targets of one dependency bump Job.
 	MaxDependencyBumpsPerJob = 16
+	// MaxStartUpBumpSources caps the sources of one Step Job's
+	// StartUpBumpSources.
+	MaxStartUpBumpSources = 16
 )
 
 // DependencyRequiredV1 is one dependency between two repositories of a Task:
@@ -181,4 +184,22 @@ type UpdateTaskDependencyBumpArgsV1 struct {
 // report, including when it matched no bump (a late or repeated report).
 type UpdateTaskDependencyBumpReplyV1 struct {
 	Done bool
+}
+
+// StartUpBumpSourceV1 is one merged repository of an upstream Task (one
+// the Task's Step Job waits for) and what it provides: the runner bumps
+// the Task's repositories that require one of Provides to Commit before
+// the agent runs. Stamped AT JOB CREATION; the runner only reads it.
+type StartUpBumpSourceV1 struct {
+	TaskID     string                  `json:"taskId"`
+	TaskTitle  string                  `json:"taskTitle"`
+	Repository RepositoryEntry         `json:"repository"`
+	Commit     string                  `json:"commit"`
+	Provides   []StartUpBumpProvidedV1 `json:"provides"`
+}
+
+// StartUpBumpProvidedV1 is a module or package the source provides.
+type StartUpBumpProvidedV1 struct {
+	Ecosystem string `json:"ecosystem"`
+	Name      string `json:"name"`
 }

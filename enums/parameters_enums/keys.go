@@ -265,6 +265,11 @@ const (
 	// DependencyBumpRequest is which repository of the Task a dependency bump
 	// Job bumps, and to which merged libraries, stamped AT JOB CREATION.
 	DependencyBumpRequest Key = 147 //string - JSON of tasks.DependencyBumpRequestV1
+	// StartUpBumpSources are the merged repositories of the upstream Tasks a
+	// Task's Step Job waits for, and what they provide, stamped AT JOB
+	// CREATION of a Step Job: the runner bumps the Task's repositories to
+	// them before the agent runs.
+	StartUpBumpSources Key = 148 //string - JSON array of tasks.StartUpBumpSourceV1
 )
 
 var keyToString = map[Key]string{
@@ -404,6 +409,7 @@ var keyToString = map[Key]string{
 	ProductionWatchTargets:     "production watch targets",
 	ProductionEvidence:         "production evidence",
 	DependencyBumpRequest:      "dependency bump request",
+	StartUpBumpSources:         "start up bump sources",
 }
 
 func (k Key) String() string {
@@ -551,6 +557,7 @@ var keyMap = map[Key]string{
 	ProductionWatchTargets:     "145",
 	ProductionEvidence:         "146",
 	DependencyBumpRequest:      "147",
+	StartUpBumpSources:         "148",
 }
 
 func (k Key) Key() (string, error) {
