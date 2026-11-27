@@ -9,7 +9,6 @@ type UpdateBuildDtoV1 struct {
 	ID                string
 	BuildTs           int64
 	CommitHash        string
-	CommitMessage     string
 	Status            build_enums.Status
 	ErrorMessage      string
 	TaskDefinitionArn string
